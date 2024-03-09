@@ -85,11 +85,14 @@ function SandpackRoot(props: SandpackProps) {
           environment: 'create-react-app',
         }}
         options={{
+          bundlerTimeOut: Infinity,
           autorun,
           initMode: 'user-visible',
           initModeObserverOptions: {rootMargin: '1400px 0px'},
-          bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
-          logLevel: SandpackLogLevel.None,
+          bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 739b139
+          // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
+          // logLevel: SandpackLogLevel.None,
+          logLevel: SandpackLogLevel.Debug,
         }}>
         <CustomPreset providedFiles={Object.keys(files)} />
       </SandpackProvider>

@@ -11,6 +11,11 @@
       "path": "/reference/react"
     },
     {
+      "title": "Server components",
+      "path": "/reference/react/RSC",
+      "routes": []
+    },
+    {
       "title": "Hooks",
       "path": "/reference/react/hooks",
       "routes": [
