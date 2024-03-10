@@ -82,29 +82,166 @@ function SandpackRoot(props: SandpackProps) {
 
   return (
     <div className="sandpack sandpack--playground w-full my-8" dir="ltr">
-      <SandpackProvider
-        files={{...template, ...files}}
-        theme={CustomTheme}
-        customSetup={{
-          // TODO: we don't want this on by default, server should be a separate sandpack, just for testing
-          environment: rsc ? ('react-server' as any) : 'react',
-        }}
-        options={{
-          bundlerTimeOut: Infinity,
-          autorun,
-          initMode: 'user-visible',
-          initModeObserverOptions: {rootMargin: '1400px 0px'},
-          bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git a579d0c
-          // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
-          // logLevel: SandpackLogLevel.None,
-          logLevel: SandpackLogLevel.Debug,
-        }}>
-        <CustomPreset providedFiles={Object.keys(files)} />
-        {rsc && typeof window !== undefined && <RSCConnection />}
-      </SandpackProvider>
+      {/* TODO: unflag when stuff works! */}
+      {!rsc && (
+        <SandpackProvider
+          files={{...template, ...files}}
+          theme={CustomTheme}
+          customSetup={{
+            environment: 'react' as any,
+          }}
+          options={{
+            bundlerTimeOut: Infinity,
+            autorun,
+            initMode: 'user-visible',
+            initModeObserverOptions: {rootMargin: '1400px 0px'},
+            bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 3cd6682
+            // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
+            // logLevel: SandpackLogLevel.None,
+            logLevel: SandpackLogLevel.Debug,
+          }}>
+          <CustomPreset providedFiles={Object.keys(files)} />
+          {/* {rsc && typeof window !== undefined && <RSCConnection />} */}
+        </SandpackProvider>
+      )}
+      {rsc && (
+        <SandpackProvider
+          files={{
+            ...template,
+            ...files,
+            ...Object.fromEntries(
+              Object.entries(rscServerLibFiles).map(([name, code]) => [
+                name,
+                {code, hidden: true},
+              ])
+            ),
+          }}
+          theme={CustomTheme}
+          customSetup={{
+            environment: 'react-server' as any,
+          }}
+          options={{
+            bundlerTimeOut: Infinity,
+            autorun,
+            initMode: 'user-visible',
+            initModeObserverOptions: {rootMargin: '1400px 0px'},
+            bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 3cd6682
+            // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
+            // logLevel: SandpackLogLevel.None,
+            logLevel: SandpackLogLevel.Debug,
+          }}>
+          <CustomPreset providedFiles={Object.keys(files)} />
+          {rsc && typeof window !== undefined && <RSCConnection />}
+        </SandpackProvider>
+      )}
     </div>
   );
 }
+
+const rscServerLibFiles = {
+  'src/index.js': `
+import './__rsc__/webpack.js';
+import App from './App.js'
+import * as RSDWServer from 'react-server-dom-webpack/server';
+
+async function handleRequest() {
+  const stream = await RSDWServer.renderToReadableStream(
+    <App />,
+    moduleMap,
+    { onError: console.error }
+  );
+  return stream;
+};
+
+const moduleMap = new Proxy({}, {
+  get(_, key) {
+    const [moduleUrl, exportName] = key.split('#');
+    const prefix = 'file://';
+    const moduleName = moduleUrl.startsWith(prefix) ? moduleUrl.slice(prefix.length) : moduleUrl
+    // console.log('moduleMap', { moduleName, exportName });
+    return { id: moduleName, chunks: [moduleName], name: exportName }
+  }
+});
+
+const listener = async (event) => {
+  // console.log('RSC frame got message', event)
+  const { data } = event;
+  if (!data.__rsc_request) {
+    return
+  }
+
+  const { requestId } = data.__rsc_request;
+
+  try {
+    const stream = await handleRequest();
+    // console.log('RSC frame', 'responding...', { requestId })
+    window.parent.postMessage(
+      { __rsc_response: { requestId, data: stream } },
+      '*',
+      [stream]
+    );
+  } catch (error) {
+    window.parent.postMessage(
+      { __rsc_response: { requestId, error: error.message ?? \`$\{error}\` } },
+      '*',
+    );
+  }
+}
+
+// nastily handle hot reload
+if (window.__RSC_LISTENER && window.__RSC_LISTENER !== listener) {
+  window.removeEventListener(
+    "message",
+    window.__RSC_LISTENER,
+    false,
+  );
+  window.__RSC_LISTENER = listener;
+}
+
+window.addEventListener(
+  "message",
+  listener,
+  false,
+);
+`,
+  '/src/__rsc__/webpack.js': `
+  // console.log("installing __webpack_require__...");
+
+const moduleCache = new Map();
+
+const getOrImport = (/** @type {string} */ id) => {
+  // in sandpack's case, modules and chunks are one and the same.
+  if (!moduleCache.has(id)) {
+    const promise = import(id);
+    moduleCache.set(id, promise);
+  }
+  return moduleCache.get(id);
+}
+
+if (typeof globalThis["__webpack_require__"] !== "function") {
+  globalThis["__webpack_chunk_load__"] = (/** @type {string} */ id) => {
+    // console.log('__webpack_chunk_load__', id)
+
+    // in sandpack's case, there is no concept of chunks.
+    // but it's probably best that we have a preload-adjacent thing,
+    // so in the client reference, we set the chunk to the same filename as the module,
+    // and just import() it.
+    // unlike __webpack_chunk_load__, this also evaluates the module,
+    // but we don't really mind here.
+    return getOrImport(id);
+  }
+
+  /** @type {Map<string, Promise<Record<string, unknown>>>} */
+  globalThis["__webpack_require__"] = (/** @type {string} */ id) => {
+    // console.log('__webpack_require__', id);
+
+    return getOrImport(id);
+  };
+}
+
+export {};
+`,
+};
 
 function RSCConnection() {
   const {sandpack, listen} = useSandpack();
