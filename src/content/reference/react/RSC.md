@@ -13,7 +13,7 @@ Server components are cool!
 
 ## Usage {/*usage*/}
 
-<Sandpack>
+<Sandpack rsc>
 
 ```json package.json hidden
 {
@@ -103,42 +103,110 @@ export function createClientElementStream(
 }
 ```
 
-```js src/App.js hidden
+```js src/index.js
 import './rsc/webpack.js';
-import { createFromReadableStream } from 'react-server-dom-webpack/client.browser'
-import { createClientElementStream } from './rsc/client-element';
-// import { useState } from 'react';
-// import ArtistPage from './ArtistPage.js';
+import * as RSDWServer from 'react-server-dom-webpack/server';
 
-// <ArtistPage
-//   artist={{
-//     id: 'the-beatles',
-//     name: 'The Beatles',
-//   }}
-// />
+const App = RSDWServer.createClientModuleProxy('file:///src/App.js')[''];
 
-const stream = createClientElementStream(
-  {
-    moduleId: "/src/ArtistPage.js",
-    // moduleId: require.resolve("./ArtistPage.js"),
-    // moduleId: await import.meta.resolve("./ArtistPage.js"),
-    exportName: "",
-    // exportName: "default",
-  },
-  {
-    artist: {
+async function handleRequest() {
+  const stream = await RSDWServer.renderToReadableStream(
+    <App />,
+    moduleMap,
+    { onError: console.error }
+  );
+  return stream;
+};
+
+const moduleMap = new Proxy({}, {
+  get(_, key) {
+    const [moduleUrl, exportName] = key.split('#');
+    const moduleName = moduleUrl.replace(/^file:\/\//, '');
+    // console.log('moduleMap', { moduleName, exportName });
+    return { id: moduleName, chunks: [moduleName], name: exportName }
+  }
+});
+
+const listener = async (event) => {
+  // console.log('RSC frame got message', event)
+  const { data } = event;
+  if (!data.__rsc_request) {
+    return
+  }
+
+  const { requestId } = data.__rsc_request;
+
+  try {
+    const stream = await handleRequest();
+    // console.log('RSC frame', 'responding...', { requestId })
+    window.parent.postMessage(
+      { __rsc_response: { requestId, data: stream } },
+      '*',
+      [stream]
+    );
+  } catch (error) {
+    window.parent.postMessage(
+      { __rsc_response: { requestId, error: error.message ?? `${error}` } },
+      '*',
+    );
+  }
+}
+
+// nastily handle hot reload
+if (window.__RSC_LISTENER && window.__RSC_LISTENER !== listener) {
+  window.removeEventListener(
+    "message",
+    window.__RSC_LISTENER,
+    false,
+  );
+  window.__RSC_LISTENER = listener;
+}
+
+window.addEventListener(
+  "message",
+  listener,
+  false,
+);
+```
+
+```js src/App.js hidden
+"use client"
+import ArtistPage from './ArtistPage.js';
+export default function App() {
+  return <ArtistPage
+    artist={{
       id: 'the-beatles',
       name: 'The Beatles',
-    }
-  },
-);
-
-const rootElement = createFromReadableStream(stream, {});
-
-export default function Root() {
-  console.log('hi from Root')
-  return rootElement;
+    }}
+  />
 }
+
+// import './rsc/webpack.js';
+// import { createFromReadableStream } from 'react-server-dom-webpack/client.browser'
+// import { createClientElementStream } from './rsc/client-element';
+
+// const stream = createClientElementStream(
+//   {
+//     moduleId: "/src/ArtistPage.js",
+//     // moduleId: require.resolve("./ArtistPage.js"),
+//     // moduleId: await import.meta.resolve("./ArtistPage.js"),
+//     exportName: "",
+//     // exportName: "default",
+//   },
+//   {
+//     artist: {
+//       id: 'the-beatles',
+//       name: 'The Beatles',
+//     }
+//   },
+// );
+
+// const rootElement = createFromReadableStream(stream, {});
+
+// export default function Root() {
+//   console.log('hi from Root')
+//   return rootElement;
+// }
 ```
 
 ```js src/ArtistPage.js active
