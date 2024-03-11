@@ -109,7 +109,7 @@ function SandpackRoot(props: SandpackProps) {
           customSetup={{
             environment: 'react' as any,
           }}
-          options={sharedOptions}>
+          options={{...sharedOptions}}>
           <CustomPreset providedFiles={Object.keys(files)} />
         </SandpackProvider>
       </SandpackRSCContext.Provider>
@@ -125,7 +125,7 @@ function SandpackRoot(props: SandpackProps) {
             customSetup={{
               environment: 'react-server' as any,
             }}
-            options={sharedOptions}>
+            options={{...sharedOptions}}>
             <Preview
               className="order-last xl:order-2"
               isExpanded={false}

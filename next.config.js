@@ -31,6 +31,13 @@ const nextConfig = {
     // Don't bundle the shim unnecessarily.
     config.resolve.alias['use-sync-external-store/shim'] = 'react';
 
+    // For sandpack-rsc:
+    // Allow importing the source code of a module to easily inject it into sandboxes
+    config.module.rules.unshift({
+      test: /\.source\.js$/,
+      type: 'asset/source',
+    });
+
     const {IgnorePlugin, NormalModuleReplacementPlugin} = require('webpack');
     config.plugins.push(
       new NormalModuleReplacementPlugin(
