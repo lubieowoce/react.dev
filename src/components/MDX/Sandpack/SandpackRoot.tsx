@@ -576,58 +576,6 @@ const getClientFromSandpackState = (sandpackState: SandpackState) => {
   return clients[0] ?? null;
 };
 
-function RSCConnection() {
-  const {sandpack, listen} = useSandpack();
-  // console.log('RSCConnection ::', sandpack.clients);
-  const client = getClientFromSandpackState(sandpack);
-  const sendRequest = useIframeRequest();
-  const onCompilationDone = React.useCallback(
-    (success: boolean) => {
-      if (!success) {
-        return;
-      }
-      if (!client) {
-        console.error(
-          'RSCConnection :: Compilation succeeded, but client is not available'
-        );
-        return;
-      }
-      console.assert(
-        client.status === 'done',
-        'Received "done" message but client is not done',
-        client
-      );
-      console.log('RSCConnection :: Sending request to iframe');
-      sendRequest(undefined, [], client.iframe).then(async (_stream) => {
-        const stream = _stream as ReadableStream<Uint8Array>;
-        const decoder = new TextDecoder();
-
-        // @ts-expect-error missing type definitions for ReadableStream being iterable?
-        const iterableStream = stream as AsyncIterable<Uint8Array>;
-
-        for await (const chunk of iterableStream) {
-          console.log(decoder.decode(chunk));
-        }
-      });
-    },
-    [client, sendRequest]
-  );
-
-  React.useEffect(() => {
-    return listen((message) => {
-      if (message.type === 'done') {
-        onCompilationDone(!message.compilatonError);
-      }
-    });
-  }, [onCompilationDone, listen]);
-
-  if (!client) {
-    return null;
-  }
-
-  return null;
-}
-
 function useIframeRequest() {
   const sendRequestImpl = usePostMessageRequest();
   return React.useCallback(
