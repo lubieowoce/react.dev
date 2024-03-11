@@ -47,11 +47,7 @@ export function initServer(/** @type {React.FC}*/ AppComponent) {
     }
   );
 
-  let cleanupPrevious;
-  initMessaging((port) => {
-    if (cleanupPrevious) {
-      cleanupPrevious();
-    }
+  const cleanupMessaging = initMessaging((port) => {
     debug &&
       console.debug('rsc-server :: attaching request listener to port', port);
 
@@ -71,8 +67,10 @@ export function initServer(/** @type {React.FC}*/ AppComponent) {
     port.addEventListener('message', requestListener);
     port.start();
     debug && console.debug('rsc-server :: listening');
-    cleanupPrevious = () => {
+    return () => {
       port.removeEventListener('message', requestListener);
     };
   });
+
+  return cleanupMessaging;
 }

@@ -116,29 +116,52 @@ export function createPostMessageRequestClient(idBase = '') {
 }
 
 export function initMessaging(
-  /** @type {(port: MessagePort) => void} */ onPortReceived
+  /** @type {(port: MessagePort) => (void | (() => void))} */ onPortReceived
 ) {
-  addMessageListenerWithCleanup(
-    createPostMessageRequestListener((data, event) => {
-      if (data === 'RSC_CHANNEL_PORT') {
-        const port = event.ports[0];
-        onPortReceived(port);
-      }
-    }),
-    '__rsc_channel_port'
+  /** @type {void | (() => void)} */
+  let previousCleanupUserHandler;
+
+  const cleanupPreviousUserHandler = () => {
+    if (previousCleanupUserHandler) {
+      previousCleanupUserHandler();
+    }
+  };
+
+  const cleanupPortListener = addMessageListenerWithCleanup(
+    createPostMessageRequestListener(
+      (data, event) => {
+        if (data === 'RSC_CHANNEL_PORT') {
+          const port = event.ports[0];
+          // console.debug(
+          //   `initMessaging[${sandboxId}] :: received MessagePort`,
+          //   port
+          // );
+          cleanupPreviousUserHandler();
+          previousCleanupUserHandler = onPortReceived(port);
+        }
+      },
+      {sendReply: replyOnWindowParent}
+    )
   );
 
-  window.parent.postMessage({__rsc_init: {sandboxId}}, '*');
+  const instanceId = Date.now() + '';
+  // console.debug(
+  //   `initMessaging[${sandboxId}] :: sending __rsc_init message to parent`
+  // );
+  window.parent.postMessage({__rsc_init: {sandboxId, instanceId}}, '*');
+
+  return () => {
+    cleanupPreviousUserHandler();
+    cleanupPortListener();
+  };
 }
 
-function addMessageListenerWithCleanup(listener, name) {
-  if (window[name] && window[name] !== listener) {
-    window.removeEventListener(
-      'message',
-      /** @type {any} */ (window)[name],
-      false
-    );
-    window[name] = listener;
-  }
+function addMessageListenerWithCleanup(
+  /** @type {(event: MessageEvent<unknown>) => void} */ listener
+) {
+  const cleanup = () => {
+    window.removeEventListener('message', listener, false);
+  };
   window.addEventListener('message', listener, false);
+  return cleanup;
 }

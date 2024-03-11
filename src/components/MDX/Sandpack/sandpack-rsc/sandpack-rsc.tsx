@@ -1,12 +1,24 @@
-import {SandpackFiles} from '@codesandbox/sandpack-react/unstyled';
-import React, {useMemo, type MutableRefObject} from 'react';
+import {SandpackFiles, useSandpack} from '@codesandbox/sandpack-react/unstyled';
+import React, {
+  useMemo,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  startTransition,
+} from 'react';
 import {createContext} from 'react';
+import {useDebounced} from '../useDebounced';
 
 export type SandpackRSCContextValue = {
   sandboxId: string;
   type: 'client' | 'server';
   port: MessagePort;
+  onFileChanged?: FileChangeListener;
+  onFileListenerReady?: (listener: FileChangeListener | null) => void;
+  recreateMessageChannel: () => ReturnType<typeof createMessageChannel>;
 };
+
+type FileChangeListener = (fileName: string, newContent: string) => void;
 
 export const SandpackRSCContext = createContext<SandpackRSCContextValue | null>(
   null
@@ -25,38 +37,81 @@ function useClientServerSandboxIds() {
   }, [idBase]);
 }
 
-export function useSandpackRSCSetup(isRsc: boolean) {
+function createMessageChannel() {
+  const channel = new MessageChannel();
+  return {
+    server: channel.port1,
+    client: channel.port2,
+  };
+}
+
+export function useSandpackRSCSetup(
+  isRsc: boolean,
+  initialFiles: SandpackFiles
+) {
   const sandboxIds = useClientServerSandboxIds();
+  // TODO: this doesn't handle file updates when editing the docs...
+  const [files, setFiles] = React.useState(initialFiles);
 
-  const [messageChannel] = React.useState(() => {
-    const channel = new MessageChannel();
-    return {
-      server: channel.port1,
-      client: channel.port2,
-    };
-  });
+  const [messageChannel, setMessageChannel] =
+    React.useState(createMessageChannel);
+  const recreateMessageChannel = useCallback(() => {
+    const newMessageChannel = createMessageChannel();
+    setMessageChannel(newMessageChannel);
+    return newMessageChannel;
+  }, []);
 
-  const context = React.useMemo(() => {
-    if (!isRsc) return {client: null, server: null};
-    return {
-      client: {
-        type: 'client' as const,
-        sandboxId: sandboxIds.client,
-        port: messageChannel.client,
-      },
-      server: {
-        type: 'server' as const,
-        sandboxId: sandboxIds.server,
-        port: messageChannel.server,
-      },
-    };
-  }, [
-    isRsc,
-    messageChannel.client,
-    messageChannel.server,
-    sandboxIds.client,
-    sandboxIds.server,
-  ]);
+  // TODO: batch this, no reason to do this file by file
+  const onFileChanged = useCallback((fileName: string, code: string) => {
+    setFiles((files) => {
+      const existing = files[fileName];
+      if (typeof existing === 'string' || typeof existing === 'undefined') {
+        if (existing !== code) {
+          return {...files, [fileName]: code};
+        }
+      } else if (typeof existing === 'object') {
+        if (existing.code !== code) {
+          return {...files, [fileName]: {...existing, code}};
+        }
+      }
+      return files;
+    });
+  }, []);
+
+  const context:
+    | Record<'client' | 'server', null>
+    | Record<'client' | 'server', SandpackRSCContextValue> =
+    React.useMemo(() => {
+      if (!isRsc) return {client: null, server: null};
+      return {
+        client: {
+          type: 'client' as const,
+          sandboxId: sandboxIds.client,
+          port: messageChannel.client,
+          onFileChanged,
+          onFileListenerReady: undefined,
+          recreateMessageChannel,
+        },
+        server: {
+          type: 'server' as const,
+          sandboxId: sandboxIds.server,
+          port: messageChannel.server,
+          onFileChanged: undefined,
+          // onFileListenerReady,
+          onFileListenerReady: undefined,
+          recreateMessageChannel,
+        },
+      };
+    }, [
+      isRsc,
+      messageChannel.client,
+      messageChannel.server,
+      sandboxIds.client,
+      sandboxIds.server,
+      onFileChanged,
+      // onFileListenerReady,
+      recreateMessageChannel,
+    ]);
 
   const code = useMemo(() => {
     if (!isRsc) {
@@ -76,7 +131,7 @@ export function useSandpackRSCSetup(isRsc: boolean) {
     };
   }, [isRsc, sandboxIds.client, sandboxIds.server]);
 
-  return {context, code};
+  return {context, code, files: isRsc ? files : initialFiles};
 }
 
 function hideFiles(files: SandpackFiles): SandpackFiles {
@@ -94,10 +149,58 @@ export function useSandpackRSCFrameBootstrap() {
     sandboxId,
     port: messagePort,
     type,
+    onFileListenerReady,
+    onFileChanged,
+    recreateMessageChannel,
   } = React.useContext(SandpackRSCContext) ?? {};
+
+  const {
+    sandpack: {updateFile, files: fastFiles},
+  } = useSandpack();
+  const files = useDebounced(fastFiles);
+
+  useEffect(() => {
+    if (!onFileListenerReady) return;
+    onFileListenerReady((fileName, code) => updateFile(fileName, code, true));
+    return () => onFileListenerReady(null);
+  }, [onFileListenerReady, updateFile]);
+
+  // TODO: do we need to reset this?
+  const [fileCache] = React.useState(
+    () =>
+      new Map<string, string>(
+        Object.entries(files).map(([fileName, fileData]) => [
+          fileName,
+          fileData.code,
+        ])
+      )
+  );
+
+  useEffect(() => {
+    if (!onFileChanged) return;
+    // console.debug('sandpack files changed', files);
+    startTransition(() => {
+      for (const fileName in files) {
+        const fileData = files[fileName];
+        const cached = fileCache.get(fileName);
+        if (cached !== fileData.code) {
+          console.debug('sandpack file changed', fileName);
+          fileCache.set(fileName, fileData.code);
+          onFileChanged(fileName, fileData.code);
+        }
+      }
+    });
+  }, [onFileChanged, files, fileCache]);
 
   type MessageListener = (event: MessageEvent<unknown>) => void;
   const listenerRef = React.useRef<MessageListener | null>(null);
+
+  const instanceState = React.useRef<{
+    instanceId: string;
+    port: MessagePort;
+    iframe: HTMLIFrameElement;
+  } | null>(null);
+
   const onIframeChange = React.useCallback(
     (iframe: HTMLIFrameElement | null) => {
       if (!sandboxId) {
@@ -110,12 +213,40 @@ export function useSandpackRSCFrameBootstrap() {
             return;
           }
           if ('__rsc_init' in data) {
-            const body = data.__rsc_init as {sandboxId: string};
+            const body = data.__rsc_init as {
+              sandboxId: string;
+              instanceId: string;
+            };
             if (body.sandboxId === sandboxId) {
-              console.log('SandpackRoot :: sandbox bootstrapped:', type);
+              let messagePortToSend = messagePort!;
+              console.log('sandpack-rsc :: sandbox bootstrapped:', type);
+              if (!instanceState.current) {
+                instanceState.current = {
+                  instanceId: body.instanceId,
+                  port: messagePort!,
+                  iframe,
+                };
+              } else if (instanceState.current.instanceId !== body.instanceId) {
+                // TODO: this is convoluted... how do we make sure the other side gets it too?
+                console.log(
+                  'sandpack-rsc :: got a new instance of an existing sandbox'
+                );
+                messagePort!.close();
+                const newChannel = recreateMessageChannel!();
+                messagePortToSend = newChannel[type!];
+                instanceState.current = {
+                  instanceId: body.instanceId,
+                  port: messagePortToSend,
+                  iframe,
+                };
+              }
 
-              console.log('sending port...', type);
-              void sendIframeRequest('RSC_CHANNEL_PORT', [messagePort], iframe);
+              console.log('sending port...', type, messagePortToSend);
+              void sendIframeRequest(
+                'RSC_CHANNEL_PORT',
+                [messagePortToSend],
+                iframe
+              );
             }
           }
         };
@@ -128,8 +259,17 @@ export function useSandpackRSCFrameBootstrap() {
         }
       }
     },
-    [sandboxId, type, sendIframeRequest, messagePort]
+    [sandboxId, type, sendIframeRequest, messagePort, recreateMessageChannel]
   );
+
+  useEffect(() => {
+    // the other frame might have changed the port.
+    const state = instanceState.current;
+    if (state && state.port !== messagePort) {
+      void sendIframeRequest('RSC_CHANNEL_PORT', [messagePort], state.iframe);
+    }
+  }, [messagePort, sendIframeRequest]);
+
   return onIframeChange;
 }
 
@@ -171,7 +311,22 @@ const RSC_SERVER_LIB_FILES = stripReactRefresh({
 import { initServer } from './__rsc__/server.source.js';
 import App from './App.js';
 
-initServer(App);
+let cleanup = initServer(App);
+
+if (module.hot) {
+  // console.debug('rsc-server :: running in hot-reload mode', module.hot);
+  module.hot.dispose(() => {
+    console.debug('rsc-server :: module.hot.dispose: src/index.js');
+    cleanup();
+  });
+  module.hot.accept(['./App.js'], ([newAppModule]) => {
+    console.debug('rsc-server :: accepting new App.js');
+    const App = newAppModule.default;
+    cleanup();
+    cleanup = initServer(App);
+    // TODO: trigger a refetch in the client?
+  });
+}
 `,
   ...getSandboxCodeFileContents(['src/__rsc__/server.source.js']),
 });
@@ -180,7 +335,15 @@ const RSC_CLIENT_LIB_FILES = stripReactRefresh({
   'src/index.js': `
 import { initClient } from './__rsc__/client.source.js';
 
-initClient();
+const cleanup = initClient();
+
+if (module.hot) {
+  // console.debug('rsc-client :: running in hot-reload mode', module.hot);
+  module.hot.dispose(() => {
+    console.debug('rsc-client :: module.hot.dispose: src/index.js');
+    cleanup();
+  });
+}
 `,
   ...getSandboxCodeFileContents(['src/__rsc__/client.source.js']),
 });

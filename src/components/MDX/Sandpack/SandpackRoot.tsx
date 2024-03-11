@@ -76,14 +76,35 @@ ul {
 function SandpackRoot(props: SandpackProps) {
   let {children, autorun = true, rsc: isRsc = false} = props;
   const codeSnippets = Children.toArray(children) as React.ReactElement[];
-  const files = createFileMap(codeSnippets);
+  const initialFiles = createFileMap(codeSnippets);
 
-  files['/src/styles.css'] = {
-    code: [sandboxStyle, files['/src/styles.css']?.code ?? ''].join('\n\n'),
-    hidden: !files['/src/styles.css']?.visible,
+  initialFiles['/src/styles.css'] = {
+    code: [sandboxStyle, initialFiles['/src/styles.css']?.code ?? ''].join(
+      '\n\n'
+    ),
+    hidden: !initialFiles['/src/styles.css']?.visible,
   };
 
-  const sandpackRSCSetup = useSandpackRSCSetup(isRsc);
+  const sandpackRSCSetup = useSandpackRSCSetup(isRsc, initialFiles);
+  const _clientFiles = React.useMemo(
+    () => ({
+      ...template,
+      ...sandpackRSCSetup.files,
+      ...sandpackRSCSetup.code.client,
+    }),
+    [sandpackRSCSetup.files, sandpackRSCSetup.code]
+  );
+  const clientFiles = React.useDeferredValue(_clientFiles);
+
+  const _serverFiles = React.useMemo(
+    () => ({
+      ...template,
+      ...sandpackRSCSetup.files,
+      ...sandpackRSCSetup.code.server,
+    }),
+    [sandpackRSCSetup.files, sandpackRSCSetup.code.server]
+  );
+  const serverFiles = React.useDeferredValue(_serverFiles);
 
   const sharedOptions: SandpackProviderProps['options'] = {
     bundlerTimeOut: Infinity,
@@ -100,27 +121,19 @@ function SandpackRoot(props: SandpackProps) {
     <div className="sandpack sandpack--playground w-full my-8" dir="ltr">
       <SandpackRSCContext.Provider value={sandpackRSCSetup.context.client}>
         <SandpackProvider
-          files={{
-            ...template,
-            ...files,
-            ...sandpackRSCSetup.code.client,
-          }}
+          files={clientFiles}
           theme={CustomTheme}
           customSetup={{
             environment: 'react' as any,
           }}
           options={{...sharedOptions}}>
-          <CustomPreset providedFiles={Object.keys(files)} />
+          <CustomPreset providedFiles={Object.keys(clientFiles)} />
         </SandpackProvider>
       </SandpackRSCContext.Provider>
       {isRsc && (
         <SandpackRSCContext.Provider value={sandpackRSCSetup.context.server}>
           <SandpackProvider
-            files={{
-              ...template,
-              ...files,
-              ...sandpackRSCSetup.code.server,
-            }}
+            files={serverFiles}
             theme={CustomTheme}
             customSetup={{
               environment: 'react-server' as any,

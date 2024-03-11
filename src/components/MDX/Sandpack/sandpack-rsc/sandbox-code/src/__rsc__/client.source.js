@@ -57,10 +57,11 @@ export function initClient() {
   startTransition(() => {
     root.render(<Root initialPromise={initialPromiseCtrl.promise} />);
   });
+  const cleanupDom = () => root.unmount();
 
   const debug = false;
 
-  initMessaging((port) => {
+  const cleanupMessaging = initMessaging((port) => {
     debug && console.debug('rsc-client :: got port');
     const sendRequest = createPostMessageRequestClient();
 
@@ -96,4 +97,10 @@ export function initClient() {
       }
     })();
   });
+
+  return () => {
+    console.log('rsc-client :: cleaning up');
+    cleanupDom();
+    cleanupMessaging();
+  };
 }

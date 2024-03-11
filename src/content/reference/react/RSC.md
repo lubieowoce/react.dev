@@ -53,6 +53,7 @@ export default function ArtistPage({ artist }) {
   return (
     <>
       <h1>{artist.name}</h1>
+      <input type="text" placeholder="Client state test" />
       <ClientTest />
       <Suspense fallback={<Loading />}>
         <Albums artistId={artist.id} />

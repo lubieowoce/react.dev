@@ -12,24 +12,13 @@ import type {LintDiagnostic} from './useSandpackLint';
 import {CSSProperties} from 'react';
 import {LoadingOverlay} from './LoadingOverlay';
 import {useSandpackRSCFrameBootstrap} from './sandpack-rsc';
+import {useDebounced} from './useDebounced';
 
 type CustomPreviewProps = {
   className?: string;
   isExpanded: boolean;
   lintErrors: LintDiagnostic;
 };
-
-function useDebounced(value: any): any {
-  const ref = useRef<any>(null);
-  const [saved, setSaved] = useState(value);
-  useEffect(() => {
-    clearTimeout(ref.current);
-    ref.current = setTimeout(() => {
-      setSaved(value);
-    }, 300);
-  }, [value]);
-  return saved;
-}
 
 export function Preview({
   isExpanded,
@@ -88,21 +77,23 @@ export function Preview({
   const clientId = useId();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onIframeRef = useSandpackRSCFrameBootstrap();
+  const syncBundlerToIframe = useCallback(
+    (iframeElement: HTMLIFrameElement | null) => {
+      if (iframeElement) {
+        registerBundler(iframeElement, clientId);
+      } else {
+        unregisterBundler(clientId);
+      }
+    },
+    []
+  );
   const combinedIframeRef = useCallback((iframe: HTMLIFrameElement | null) => {
     iframeRef.current = iframe;
     onIframeRef(iframe);
+    syncBundlerToIframe(iframe);
   }, []);
 
   const sandpackIdle = sandpack.status === 'idle';
-
-  useEffect(function createBundler() {
-    const iframeElement = iframeRef.current!;
-    registerBundler(iframeElement, clientId);
-
-    return () => {
-      unregisterBundler(clientId);
-    };
-  }, []);
 
   useEffect(
     function bundlerListener() {
