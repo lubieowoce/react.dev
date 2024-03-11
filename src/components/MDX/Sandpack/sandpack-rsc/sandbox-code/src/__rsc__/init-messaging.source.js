@@ -1,14 +1,21 @@
 // @ts-check
 import sandboxId from './sandbox-id.source.js';
 
-const replyOnWindow = (data, transfer) => {
+export const replyOnWindowParent = (
+  /** @type {any} */ data,
+  /** @type {Transferable[] | undefined} */ transfer
+) => {
   window.parent.postMessage(data, '*', transfer);
 };
 
 // this should match createPostMessageRequestClient
 export function createPostMessageRequestListener(
   /** @type {(data: unknown, event: MessageEvent<unknown>) => unknown | Promise<unknown>} */ handler,
-  {sendReply = replyOnWindow, name = 'RSC frame', debug = false} = {}
+  /** @type {{ sendReply: (data: any, transfer?: Transferable[]) => void, name?: string, debug?: boolean }} */ {
+    sendReply,
+    name = '<unnamed server>',
+    debug = false,
+  }
 ) {
   return async (/** @type {MessageEvent<unknown>} */ event) => {
     debug && console.debug(name + ' got message', event);
@@ -29,7 +36,9 @@ export function createPostMessageRequestListener(
       debug && console.debug(name, 'responding...', {requestId});
       sendReply(
         {__rsc_response: {requestId, data: response}},
-        response && typeof response === 'object' ? [response] : undefined
+        response && typeof response === 'object'
+          ? [/** @type {Transferable} */ (response)]
+          : undefined
       );
     } catch (error) {
       sendReply({

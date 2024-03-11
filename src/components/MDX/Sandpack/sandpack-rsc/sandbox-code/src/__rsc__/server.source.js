@@ -63,7 +63,7 @@ export function initServer(/** @type {React.FC}*/ AppComponent) {
         return handleRenderRequest();
       },
       {
-        sendReply: (...args) => port.postMessage(...args),
+        sendReply: (data, transfer = []) => port.postMessage(data, transfer),
         name: 'rsc-server :: RSC_CHANNEL_PORT',
         debug,
       }
