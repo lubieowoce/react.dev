@@ -66,7 +66,7 @@ function Loading() {
 }
 ```
 
-```js src/Albums.js hidden
+```js src/Albums.js
 import { fetchData } from './data.js';
 
 export default async function Albums({ artistId }) {
@@ -83,20 +83,22 @@ export default async function Albums({ artistId }) {
 }
 ```
 
-```js src/ClientTest.__rsc__.js hidden
-import * as RSDWServer from 'react-server-dom-webpack/server';
-const proxy = RSDWServer.createClientModuleProxy('file://' + '/src/ClientTest.js');
-
-export const ClientTest = proxy['ClientTest'];
-```
-
-```js src/ClientTest.js hidden
+```js src/ClientTest.js
 "use client"
 
 export function ClientTest({ artistId }) {
   return <button onClick={() => alert('Hello, client!')}>Click me</button>
 }
 ```
+
+```js src/ClientTest.__rsc__.js
+// TODO: autogenerate these
+import * as RSDWServer from 'react-server-dom-webpack/server';
+const proxy = RSDWServer.createClientModuleProxy('file://' + '/src/ClientTest.js');
+
+export const ClientTest = proxy['ClientTest'];
+```
+
 
 ```js src/data.js hidden
 // Note: the way you would do data fetching depends on

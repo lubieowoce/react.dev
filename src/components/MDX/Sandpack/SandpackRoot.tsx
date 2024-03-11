@@ -5,6 +5,7 @@
 import {Children} from 'react';
 import * as React from 'react';
 import {
+  SandpackFiles,
   SandpackProvider,
   SandpackState,
   UseSandpack,
@@ -136,13 +137,13 @@ function SandpackRoot(props: SandpackProps) {
       <SandpackProvider
         files={{
           ...template,
+          ...files,
           ...(rsc
-            ? {
-                ...Object.fromEntries(Object.entries(files)),
+            ? hideFiles({
                 ...rscClientLibFiles,
                 ...createSandboxIdFile(sandboxIds.client),
-              }
-            : files),
+              })
+            : undefined),
         }}
         theme={CustomTheme}
         customSetup={{
@@ -167,13 +168,10 @@ function SandpackRoot(props: SandpackProps) {
           files={{
             ...template,
             ...files,
-            ...Object.fromEntries(
-              Object.entries(rscServerLibFiles).map(([name, code]) => [
-                name,
-                {code, hidden: true},
-              ])
-            ),
-            ...createSandboxIdFile(sandboxIds.server),
+            ...hideFiles({
+              ...rscServerLibFiles,
+              ...createSandboxIdFile(sandboxIds.server),
+            }),
           }}
           theme={CustomTheme}
           customSetup={{
@@ -195,6 +193,15 @@ function SandpackRoot(props: SandpackProps) {
         </SandpackProvider>
       )}
     </div>
+  );
+}
+
+function hideFiles(files: SandpackFiles): SandpackFiles {
+  return Object.fromEntries(
+    Object.entries(files).map(([name, code]) => [
+      name,
+      typeof code === 'string' ? {code, hidden: true} : {...code, hidden: true},
+    ])
   );
 }
 
