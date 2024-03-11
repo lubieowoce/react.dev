@@ -86,7 +86,7 @@ function SandpackRoot(props: SandpackProps) {
   };
 
   const sandpackRSCSetup = useSandpackRSCSetup(isRsc, initialFiles);
-  const _clientFiles = React.useMemo(
+  const clientFiles = React.useMemo(
     () => ({
       ...template,
       ...sandpackRSCSetup.files,
@@ -94,7 +94,6 @@ function SandpackRoot(props: SandpackProps) {
     }),
     [sandpackRSCSetup.files, sandpackRSCSetup.code]
   );
-  const clientFiles = React.useDeferredValue(_clientFiles);
 
   const _serverFiles = React.useMemo(
     () => ({
