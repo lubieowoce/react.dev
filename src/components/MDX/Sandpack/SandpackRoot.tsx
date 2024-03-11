@@ -16,6 +16,8 @@ import {CustomPreset} from './CustomPreset';
 import {createFileMap} from './createFileMap';
 import {CustomTheme} from './Themes';
 import {template} from './template';
+import {Preview} from './Preview';
+import {LintDiagnostic} from './useSandpackLint';
 
 type SandpackProps = {
   children: React.ReactNode;
@@ -188,13 +190,18 @@ function SandpackRoot(props: SandpackProps) {
             // logLevel: SandpackLogLevel.Debug,
           }}>
           <ReadSandpack sandpackRef={serverSandpack} />
-          <CustomPreset providedFiles={Object.keys(files)} />
-          {/* {rsc && typeof window !== undefined && <RSCConnection />} */}
+          <Preview
+            className="order-last xl:order-2"
+            isExpanded={false}
+            lintErrors={NO_LINT_ERRORS}
+          />
         </SandpackProvider>
       )}
     </div>
   );
 }
+
+const NO_LINT_ERRORS: LintDiagnostic = [];
 
 function hideFiles(files: SandpackFiles): SandpackFiles {
   return Object.fromEntries(
@@ -272,12 +279,15 @@ const moduleMap = new Proxy({}, {
   }
 });
 
+const debug = false;
+
 let cleanupPrevious;
 initMessaging((port) => {
   if (cleanupPrevious) {
     cleanupPrevious();
   }
-  console.log('rsc-server :: attaching request listener to port', port);
+  debug && console.debug('rsc-server :: attaching request listener to port', port);
+
   const requestListener = createRequestListener(
     (data) => {
       if (data) { return }
@@ -286,12 +296,12 @@ initMessaging((port) => {
     { 
       sendReply: (...args) => port.postMessage(...args),
       name: 'rsc-server :: RSC_CHANNEL_PORT',
-      debug: true,
+      debug,
     }
   );
   port.addEventListener('message', requestListener);
   port.start();
-  console.log('rsc-server :: listening');
+  debug && console.debug('rsc-server :: listening');
   cleanupPrevious = () => {
     port.removeEventListener('message', requestListener);
   };
@@ -312,7 +322,7 @@ export function createRequestListener(
   { sendReply = replyOnWindow, name = 'RSC frame', debug = false } = {}
 ) {
   return async (event) => {
-    debug && console.log(name + ' got message', event);
+    debug && console.debug(name + ' got message', event);
     const { data } = event;
     if (!data || typeof data !== 'object') {
       return;
@@ -320,13 +330,13 @@ export function createRequestListener(
     if (!data.__rsc_request) {
       return;
     }
-    debug && console.log(name + ' got request', event.data.__rsc_request);
+    debug && console.debug(name + ' got request', event.data.__rsc_request);
 
     const { requestId, data: requestData } = data.__rsc_request;
 
     try {
       const response = await handler(requestData, event);
-      debug && console.log(name, 'responding...', { requestId });
+      debug && console.debug(name, 'responding...', { requestId });
       sendReply(
         { __rsc_response: { requestId, data: response } },
         (response && typeof response === 'object') ? [response] : undefined,
@@ -539,26 +549,26 @@ startTransition(() => {
   root.render(<Root initialPromise={initialPromiseCtrl.promise} />)
 });
 
+const debug = false;
 
 initMessaging((port) => {
-  console.log('rsc-client :: got port');
+  debug && console.debug('rsc-client :: got port');
   const sendRequest = createRequestClient();
 
   (async () => {
     try {
-      console.log('rsc-client :: requesting...');
+      debug && console.debug('rsc-client :: requesting...');
       const responseStream = await sendRequest(undefined, undefined, {
         postMessage: (...args) => { port.start(); port.postMessage(...args) },
         responseTarget: port,
       });
-      console.log('rsc-client :: got response', responseStream);
+      debug && console.debug('rsc-client :: got response', responseStream);
       if (!(responseStream instanceof ReadableStream)) {
         throw new Error('Received response is not a ReadableStream');
       }
 
       const [s1, s2] = responseStream.tee();
       const elementPromise = RSDWClient.createFromReadableStream(s1);
-      console.log('rsc-client :: element promise', elementPromise)
       setElementPromise(elementPromise);
 
       const decoder = new TextDecoder();
