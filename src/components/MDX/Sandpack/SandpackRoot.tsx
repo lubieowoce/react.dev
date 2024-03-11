@@ -107,7 +107,7 @@ function SandpackRoot(props: SandpackProps) {
   const serverFiles = React.useDeferredValue(_serverFiles);
 
   const sharedOptions: SandpackProviderProps['options'] = {
-    bundlerTimeOut: Infinity,
+    bundlerTimeOut: 30_000,
     autorun,
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
