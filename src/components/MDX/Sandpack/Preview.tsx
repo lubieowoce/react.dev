@@ -3,7 +3,7 @@
  */
 
 /* eslint-disable react-hooks/exhaustive-deps */
-import {useRef, useState, useEffect, useMemo, useId} from 'react';
+import {useRef, useState, useEffect, useMemo, useId, useCallback} from 'react';
 import {useSandpack, SandpackStack} from '@codesandbox/sandpack-react/unstyled';
 import cn from 'classnames';
 import {ErrorMessage} from './ErrorMessage';
@@ -11,6 +11,7 @@ import {SandpackConsole} from './Console';
 import type {LintDiagnostic} from './useSandpackLint';
 import {CSSProperties} from 'react';
 import {LoadingOverlay} from './LoadingOverlay';
+import {useSandpackRSCFrameBootstrap} from './sandpack-rsc';
 
 type CustomPreviewProps = {
   className?: string;
@@ -86,6 +87,11 @@ export function Preview({
 
   const clientId = useId();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const onIframeRef = useSandpackRSCFrameBootstrap();
+  const combinedIframeRef = useCallback((iframe: HTMLIFrameElement | null) => {
+    iframeRef.current = iframe;
+    onIframeRef(iframe);
+  }, []);
 
   const sandpackIdle = sandpack.status === 'idle';
 
@@ -176,7 +182,7 @@ export function Preview({
         )}>
         <div style={iframeWrapperPosition()}>
           <iframe
-            ref={iframeRef}
+            ref={combinedIframeRef}
             className={cn(
               'rounded-t-none bg-white md:shadow-md sm:rounded-lg w-full max-w-full transition-opacity',
               // We can't *actually* hide content because that would
