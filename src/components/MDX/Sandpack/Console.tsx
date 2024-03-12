@@ -101,7 +101,13 @@ type ConsoleData = Array<{
 
 const MAX_MESSAGE_COUNT = 100;
 
-export const SandpackConsole = ({visible}: {visible: boolean}) => {
+export const SandpackConsole = ({
+  visible,
+  floating = true,
+}: {
+  floating?: boolean;
+  visible: boolean;
+}) => {
   const {listen} = useSandpack();
   const [logs, setLogs] = useState<ConsoleData>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -170,7 +176,11 @@ export const SandpackConsole = ({visible}: {visible: boolean}) => {
   }
 
   return (
-    <div className="absolute dark:border-gray-700 bg-white dark:bg-gray-95 border-t bottom-0 w-full dark:text-white">
+    <div
+      className={cn(
+        floating && 'absolute bottom-0',
+        'dark:border-gray-700 bg-white dark:bg-gray-95 border-t w-full dark:text-white'
+      )}>
       <div className="flex justify-between">
         <button
           className="flex items-center p-1"

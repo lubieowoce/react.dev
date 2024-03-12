@@ -18,12 +18,16 @@ type CustomPreviewProps = {
   className?: string;
   isExpanded: boolean;
   lintErrors: LintDiagnostic;
+  consoleOnly?: boolean;
+  title?: string;
 };
 
 export function Preview({
   isExpanded,
   className,
   lintErrors,
+  consoleOnly = false,
+  title = 'Sandbox Preview',
 }: CustomPreviewProps) {
   const {sandpack, listen} = useSandpack();
   const [bundlerIsReady, setBundlerIsReady] = useState(false);
@@ -163,6 +167,7 @@ export function Preview({
 
   return (
     <SandpackStack className={className}>
+      {consoleOnly && <div ref={sandpack.lazyAnchorRef}></div>}
       <div
         className={cn(
           'p-0 sm:p-2 md:p-4 lg:p-8 bg-card dark:bg-wash-dark h-full relative md:rounded-b-lg lg:rounded-b-none',
@@ -182,10 +187,11 @@ export function Preview({
               // if you make a compiler error and then fix it with code
               // that expands the content. You want to measure that.
               hideContent
-                ? 'absolute opacity-0 pointer-events-none duration-75'
+                ? // 'opacity-10 pointer-events-none duration-75'
+                  'absolute opacity-0 pointer-events-none duration-75'
                 : 'opacity-100 duration-150'
             )}
-            title="Sandbox Preview"
+            title={title}
             style={{
               height: iframeComputedHeight || '15px',
               zIndex: isExpanded ? 'initial' : -1,
@@ -211,7 +217,7 @@ export function Preview({
           forceLoading={showLoading}
         />
       </div>
-      <SandpackConsole visible={!error} />
+      <SandpackConsole floating={!consoleOnly} visible={!error} />
     </SandpackStack>
   );
 }

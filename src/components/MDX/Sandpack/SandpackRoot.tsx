@@ -95,7 +95,7 @@ function SandpackRoot(props: SandpackProps) {
     [sandpackRSCSetup.files, sandpackRSCSetup.code]
   );
 
-  const _serverFiles = React.useMemo(
+  const serverFiles = React.useMemo(
     () => ({
       ...template,
       ...sandpackRSCSetup.files,
@@ -103,7 +103,8 @@ function SandpackRoot(props: SandpackProps) {
     }),
     [sandpackRSCSetup.files, sandpackRSCSetup.code.server]
   );
-  const serverFiles = React.useDeferredValue(_serverFiles);
+
+  // const serverFiles = React.useDeferredValue(_serverFiles);
 
   const sharedOptions: SandpackProviderProps['options'] = {
     bundlerTimeOut: 30_000,
@@ -137,10 +138,14 @@ function SandpackRoot(props: SandpackProps) {
             customSetup={{
               environment: 'react-server' as any,
             }}
-            options={{...sharedOptions}}>
+            options={{
+              ...sharedOptions,
+            }}>
             <Preview
+              consoleOnly={true}
               className="order-last xl:order-2"
               isExpanded={false}
+              title="Server Sandbox Frame"
               lintErrors={NO_LINT_ERRORS}
             />
           </SandpackProvider>
