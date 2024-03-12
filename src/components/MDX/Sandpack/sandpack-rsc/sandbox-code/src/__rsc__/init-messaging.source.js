@@ -111,7 +111,13 @@ export function createPostMessageRequestClient(idBase = '') {
           false
         );
 
-      postMessage({__rsc_request: {requestId: requestId, data}}, transfer);
+      try {
+        postMessage({__rsc_request: {requestId: requestId, data}}, transfer);
+      } catch (err) {
+        reject(err);
+        cleanup();
+        clearTimeout(timeout);
+      }
     });
 }
 

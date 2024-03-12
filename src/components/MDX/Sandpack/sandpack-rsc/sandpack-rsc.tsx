@@ -379,7 +379,20 @@ function stripReactRefreshPostludeFromCode(code: string) {
 function useIframeRequest() {
   const sendRequestImpl = usePostMessageRequest();
   return React.useCallback(
-    (data: any, transfer: any[] | undefined, iframe: HTMLIFrameElement) => {
+    async (
+      data: any,
+      transfer: any[] | undefined,
+      iframe: HTMLIFrameElement
+    ) => {
+      if (!iframe.contentWindow) {
+        await new Promise<any>((resolve, reject) => {
+          iframe.addEventListener('load', resolve, {once: true});
+          iframe.addEventListener('error', reject, {once: true});
+        });
+        if (!iframe.contentWindow) {
+          throw new Error('Cannot access contentWindow on iframe');
+        }
+      }
       return sendRequestImpl(data, transfer, {
         postMessage: (data, transfer = undefined) =>
           iframe.contentWindow!.postMessage(data, '*', transfer),
@@ -465,6 +478,12 @@ function createPostMessageRequestClient(
           false
         );
 
-      postMessage({__rsc_request: {requestId: requestId, data}}, transfer);
+      try {
+        postMessage({__rsc_request: {requestId: requestId, data}}, transfer);
+      } catch (err) {
+        reject(err);
+        cleanup();
+        clearTimeout(timeout);
+      }
     });
 }
