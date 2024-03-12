@@ -2,8 +2,15 @@
  * Copyright (c) Facebook, Inc. and its affiliates.
  */
 
-/* eslint-disable react-hooks/exhaustive-deps */
-import {useRef, useState, useEffect, useMemo, useId, useCallback} from 'react';
+import {
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  useId,
+  useCallback,
+  useLayoutEffect,
+} from 'react';
 import {useSandpack, SandpackStack} from '@codesandbox/sandpack-react/unstyled';
 import cn from 'classnames';
 import {ErrorMessage} from './ErrorMessage';
@@ -80,7 +87,8 @@ export function Preview({
 
   const clientId = useId();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const onIframeRef = useSandpackRSCFrameBootstrap();
+  const onIframe = useSandpackRSCFrameBootstrap();
+
   const syncBundlerToIframe = useCallback(
     (iframeElement: HTMLIFrameElement | null) => {
       if (iframeElement) {
@@ -89,13 +97,16 @@ export function Preview({
         unregisterBundler(clientId);
       }
     },
-    []
+    [clientId, registerBundler, unregisterBundler]
   );
-  const combinedIframeRef = useCallback((iframe: HTMLIFrameElement | null) => {
-    iframeRef.current = iframe;
-    onIframeRef(iframe);
-    syncBundlerToIframe(iframe);
-  }, []);
+
+  const combinedIframeRef = useRefCallback(
+    (iframe: HTMLIFrameElement | null) => {
+      iframeRef.current = iframe;
+      onIframe(iframe);
+      syncBundlerToIframe(iframe);
+    }
+  );
 
   const sandpackIdle = sandpack.status === 'idle';
 
@@ -133,6 +144,7 @@ export function Preview({
         unsubscribe();
       };
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sandpackIdle]
   );
 
@@ -220,4 +232,17 @@ export function Preview({
       <SandpackConsole floating={!consoleOnly} visible={!error} />
     </SandpackStack>
   );
+}
+
+function useRefCallback<TFn extends (...args: any[]) => void>(
+  callback: TFn
+): TFn {
+  const lastComittedCallback = useRef(callback);
+  useLayoutEffect(() => {
+    lastComittedCallback.current = callback;
+  }, [callback]);
+
+  return useCallback((...args: Parameters<TFn>) => {
+    return lastComittedCallback.current(...args);
+  }, []) as TFn;
 }
