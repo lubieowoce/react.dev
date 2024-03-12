@@ -40,14 +40,20 @@ export function initClient() {
     return use(promise);
   }
 
-  let didResolve = false;
   const initialPromiseCtrl = promiseWithResolvers();
-  const setElementPromise = (promise) => {
-    if (!didResolve) {
+
+  /** @type {Promise | undefined} */
+  let currentPromise;
+  /** @type {Promise | undefined} */
+  let nextPromise;
+
+  const setElementPromise = (/** @type {Promise<any>} */ promise) => {
+    if (!currentPromise) {
+      currentPromise = promise;
       initialPromiseCtrl.resolve(promise);
-      didResolve = true;
     } else {
-      setCurrentPromise(promise);
+      nextPromise = promise;
+      currentPromise.finally(() => setCurrentPromise(nextPromise));
     }
   };
 
@@ -65,8 +71,21 @@ export function initClient() {
     debug && console.debug('rsc-client :: got port');
     const sendRequest = createPostMessageRequestClient();
 
-    (async () => {
-      try {
+    const serverUpdateListener = (
+      /** @type {MessageEvent<unknown>} */ event
+    ) => {
+      if (event.data === 'RSC_SERVER_UPDATED') {
+        debug &&
+          console.debug('rsc-client :: server updated, fetchServerData again');
+        fetchAndUpdateServerData();
+      }
+    };
+    port.addEventListener('message', serverUpdateListener, false);
+    const cleanupServerUpdateListener = () =>
+      port.removeEventListener('message', serverUpdateListener, false);
+
+    const fetchAndUpdateServerData = async () => {
+      const promise = (async () => {
         debug && console.debug('rsc-client :: requesting...');
         const responseStream = await sendRequest(undefined, undefined, {
           postMessage: (data, transfer = []) => {
@@ -80,22 +99,19 @@ export function initClient() {
           throw new Error('Received response is not a ReadableStream');
         }
 
-        const [s1, s2] = responseStream.tee();
-        const elementPromise = RSDWClient.createFromReadableStream(s1);
-        setElementPromise(elementPromise);
+        return RSDWClient.createFromReadableStream(responseStream);
+      })();
 
-        const decoder = new TextDecoder();
+      setElementPromise(promise);
+      return promise;
+    };
 
-        // @ts-expect-error TS doesn't understand that streams are AsyncIterable
-        const s2Iterable = /** @type {AsyncIterable<Uint8Array>} */ (s2);
+    debug && console.debug('rsc-client :: initial fetchServerData');
+    fetchAndUpdateServerData();
 
-        for await (const chunk of s2Iterable) {
-          console.log(decoder.decode(chunk));
-        }
-      } catch (error) {
-        setElementPromise(Promise.reject(error));
-      }
-    })();
+    return () => {
+      cleanupServerUpdateListener();
+    };
   });
 
   return () => {

@@ -48,8 +48,7 @@ export function initServer(/** @type {React.FC}*/ AppComponent) {
   );
 
   const cleanupMessaging = initMessaging((port) => {
-    debug &&
-      console.debug('rsc-server :: attaching request listener to port', port);
+    debug && console.debug('rsc-server :: attaching request listener to port');
 
     const requestListener = createPostMessageRequestListener(
       (data) => {

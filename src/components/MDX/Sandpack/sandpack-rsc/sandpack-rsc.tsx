@@ -4,7 +4,6 @@ import React, {
   type MutableRefObject,
   useCallback,
   useEffect,
-  startTransition,
 } from 'react';
 import {createContext} from 'react';
 import {useDebounced} from '../useDebounced';
@@ -13,8 +12,8 @@ export type SandpackRSCContextValue = {
   sandboxId: string;
   type: 'client' | 'server';
   port: MessagePort;
+  other: MessagePort;
   onFileChanged?: FileChangeListener;
-  onFileListenerReady?: (listener: FileChangeListener | null) => void;
   recreateMessageChannel: () => ReturnType<typeof createMessageChannel>;
 };
 
@@ -40,9 +39,95 @@ function useClientServerSandboxIds() {
 function createMessageChannel() {
   const channel = new MessageChannel();
   return {
-    server: channel.port1,
-    client: channel.port2,
+    here: channel.port1,
+    there: channel.port2,
   };
+}
+
+function useMessageChannel() {
+  const [channel, setChannel] = React.useState(createMessageChannel);
+  const recreate = useCallback(() => {
+    const newChannel = createMessageChannel();
+    setChannel(newChannel); // TODO: flushSync?
+    return newChannel;
+  }, []);
+  return React.useMemo(() => ({channel, recreate}), [channel, recreate]);
+}
+
+function useMessageChannelBridge(from: MessagePort, to: MessagePort) {
+  useEffect(() => {
+    const listener = (event: MessageEvent<unknown>) => {
+      const transferable = findTransferable(event.data) ?? [];
+      // console.log('found transferable objects in data', {
+      //   data: event.data,
+      //   transferable,
+      // });
+      if (event.ports) {
+        transferable.push(...event.ports);
+      }
+      to.postMessage(event.data, transferable);
+    };
+    from.addEventListener('message', listener);
+    from.start();
+    return () => from.removeEventListener('message', listener);
+  }, [from, to]);
+}
+
+/** https://stackoverflow.com/a/78016566 */
+export function findTransferable(root: unknown) {
+  const transferable = new Set<Transferable>();
+  const valuesToSearch = [root];
+  const visited = new Set<unknown>();
+
+  function checkForTransferable(value: unknown) {
+    if (!value || typeof value !== 'object') return;
+    if (ArrayBuffer.isView(value)) {
+      transferable.add(value.buffer); // ArrayBuffer
+    } else if (
+      value instanceof ArrayBuffer ||
+      value instanceof MessagePort ||
+      value instanceof ReadableStream ||
+      value instanceof WritableStream ||
+      value instanceof TransformStream
+    ) {
+      transferable.add(value as Transferable);
+    } else {
+      valuesToSearch.push(value);
+    }
+  }
+
+  while (valuesToSearch.length) {
+    const val = valuesToSearch.pop();
+    if (!val || typeof val !== 'object') {
+      continue;
+    }
+    if (visited.has(val)) {
+      continue;
+    }
+    visited.add(val);
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        checkForTransferable(item);
+      }
+    } else if (
+      Symbol.iterator in val &&
+      typeof val[Symbol.iterator] === 'function'
+    ) {
+      // something iterable
+      for (const item of Array.from(val as Iterable<unknown>)) {
+        checkForTransferable(item);
+      }
+    } else {
+      // regular object
+      for (const key in val) {
+        checkForTransferable((val as any)[key]);
+      }
+    }
+  }
+  if (transferable.size) {
+    return Array.from(transferable);
+  }
+  return;
 }
 
 export function useSandpackRSCSetup(
@@ -53,13 +138,17 @@ export function useSandpackRSCSetup(
   // TODO: this doesn't handle file updates when editing the docs...
   const [files, setFiles] = React.useState(initialFiles);
 
-  const [messageChannel, setMessageChannel] =
-    React.useState(createMessageChannel);
-  const recreateMessageChannel = useCallback(() => {
-    const newMessageChannel = createMessageChannel();
-    setMessageChannel(newMessageChannel);
-    return newMessageChannel;
-  }, []);
+  const clientChannel = useMessageChannel();
+  const serverChannel = useMessageChannel();
+
+  useMessageChannelBridge(
+    clientChannel.channel.here,
+    serverChannel.channel.here
+  );
+  useMessageChannelBridge(
+    serverChannel.channel.here,
+    clientChannel.channel.here
+  );
 
   // TODO: batch this, no reason to do this file by file
   const onFileChanged = useCallback((fileName: string, code: string) => {
@@ -78,40 +167,57 @@ export function useSandpackRSCSetup(
     });
   }, []);
 
+  const clientContext = useMemo(() => {
+    if (!isRsc) {
+      return null;
+    }
+    return {
+      type: 'client' as const,
+      sandboxId: sandboxIds.client,
+      port: clientChannel.channel.there,
+      other: serverChannel.channel.here,
+      onFileChanged,
+      recreateMessageChannel: clientChannel.recreate,
+    };
+  }, [
+    isRsc,
+    sandboxIds.client,
+    clientChannel.channel.there,
+    clientChannel.recreate,
+    serverChannel.channel.here,
+    onFileChanged,
+  ]);
+
+  const serverContext = useMemo(() => {
+    if (!isRsc) {
+      return null;
+    }
+    return {
+      type: 'server' as const,
+      sandboxId: sandboxIds.server,
+      port: serverChannel.channel.there,
+      other: clientChannel.channel.here,
+      onFileChanged: undefined,
+      recreateMessageChannel: serverChannel.recreate,
+    };
+  }, [
+    isRsc,
+    sandboxIds.server,
+    serverChannel.channel.there,
+    serverChannel.recreate,
+    clientChannel.channel.here,
+  ]);
+
   const context:
     | Record<'client' | 'server', null>
     | Record<'client' | 'server', SandpackRSCContextValue> =
     React.useMemo(() => {
       if (!isRsc) return {client: null, server: null};
       return {
-        client: {
-          type: 'client' as const,
-          sandboxId: sandboxIds.client,
-          port: messageChannel.client,
-          onFileChanged,
-          onFileListenerReady: undefined,
-          recreateMessageChannel,
-        },
-        server: {
-          type: 'server' as const,
-          sandboxId: sandboxIds.server,
-          port: messageChannel.server,
-          onFileChanged: undefined,
-          // onFileListenerReady,
-          onFileListenerReady: undefined,
-          recreateMessageChannel,
-        },
+        client: clientContext!,
+        server: serverContext!,
       };
-    }, [
-      isRsc,
-      messageChannel.client,
-      messageChannel.server,
-      sandboxIds.client,
-      sandboxIds.server,
-      onFileChanged,
-      // onFileListenerReady,
-      recreateMessageChannel,
-    ]);
+    }, [isRsc, clientContext, serverContext]);
 
   const code = useMemo(() => {
     if (!isRsc) {
@@ -143,27 +249,50 @@ function hideFiles(files: SandpackFiles): SandpackFiles {
   );
 }
 
-export function useSandpackRSCFrameBootstrap() {
+declare global {
+  interface Window {
+    PORT_ID?: number;
+    TRANSFERRED_PORTS?: Map<MessagePort, string>;
+  }
+}
+
+const transferPort = (port: MessagePort, prefix: string) => {
+  if (!window.TRANSFERRED_PORTS || window.PORT_ID === undefined) {
+    window.PORT_ID = 0;
+    window.TRANSFERRED_PORTS = new Map<MessagePort, string>();
+  }
+  const TRANSFERRED_PORTS = window.TRANSFERRED_PORTS as Map<
+    MessagePort,
+    string
+  >;
+  const existing = TRANSFERRED_PORTS.get(port);
+  if (existing !== undefined) {
+    throw new Error(`MessagePort ${existing} has already been transferred.`);
+  }
+  const id = prefix + '-' + window.PORT_ID++;
+  console.log(
+    `MessagePort ${id} has not been transferred yet!`,
+    TRANSFERRED_PORTS
+  );
+  TRANSFERRED_PORTS.set(port, id);
+  return port;
+};
+
+export function useSandpackRSCFrameBootstrap({debug = false} = {}) {
   const sendIframeRequest = useIframeRequest();
   const {
     sandboxId,
     port: messagePort,
+    other: otherMessagePort,
     type,
-    onFileListenerReady,
     onFileChanged,
     recreateMessageChannel,
   } = React.useContext(SandpackRSCContext) ?? {};
 
   const {
-    sandpack: {updateFile, files: fastFiles},
+    sandpack: {files: fastFiles},
   } = useSandpack();
   const files = useDebounced(fastFiles);
-
-  useEffect(() => {
-    if (!onFileListenerReady) return;
-    onFileListenerReady((fileName, code) => updateFile(fileName, code, true));
-    return () => onFileListenerReady(null);
-  }, [onFileListenerReady, updateFile]);
 
   // TODO: do we need to reset this?
   const [fileCache] = React.useState(
@@ -178,18 +307,15 @@ export function useSandpackRSCFrameBootstrap() {
 
   useEffect(() => {
     if (!onFileChanged) return;
-    // console.debug('sandpack files changed', files);
-    startTransition(() => {
-      for (const fileName in files) {
-        const fileData = files[fileName];
-        const cached = fileCache.get(fileName);
-        if (cached !== fileData.code) {
-          console.debug('sandpack file changed', fileName);
-          fileCache.set(fileName, fileData.code);
-          onFileChanged(fileName, fileData.code);
-        }
+    for (const fileName in files) {
+      const fileData = files[fileName];
+      const cached = fileCache.get(fileName);
+      if (cached !== fileData.code) {
+        console.debug('sandpack file changed', fileName);
+        fileCache.set(fileName, fileData.code);
+        onFileChanged(fileName, fileData.code);
       }
-    });
+    }
   }, [onFileChanged, files, fileCache]);
 
   type MessageListener = (event: MessageEvent<unknown>) => void;
@@ -203,6 +329,8 @@ export function useSandpackRSCFrameBootstrap() {
 
   const onIframeChange = React.useCallback(
     (iframe: HTMLIFrameElement | null) => {
+      debug &&
+        console.log(`rsc-${type} :: onIframeChange`, {mounted: !!iframe});
       if (!sandboxId) {
         return;
       }
@@ -218,22 +346,25 @@ export function useSandpackRSCFrameBootstrap() {
               instanceId: string;
             };
             if (body.sandboxId === sandboxId) {
+              debug &&
+                console.log(`rsc-${type} :: onMessage :: sandbox bootstrapped`);
               let messagePortToSend = messagePort!;
-              console.log('sandpack-rsc :: sandbox bootstrapped:', type);
+              let isInitial = false;
               if (!instanceState.current) {
+                isInitial = true;
                 instanceState.current = {
                   instanceId: body.instanceId,
                   port: messagePort!,
                   iframe,
                 };
               } else if (instanceState.current.instanceId !== body.instanceId) {
-                // TODO: this is convoluted... how do we make sure the other side gets it too?
-                console.log(
-                  'sandpack-rsc :: got a new instance of an existing sandbox'
-                );
+                debug &&
+                  console.log(
+                    `rsc-${type} :: onMessage :: got a new instance of an existing sandbox`
+                  );
                 messagePort!.close();
-                const newChannel = recreateMessageChannel!();
-                messagePortToSend = newChannel[type!];
+                const newChannel = recreateMessageChannel!(); // TODO: should this be flushSync?
+                messagePortToSend = newChannel.there;
                 instanceState.current = {
                   instanceId: body.instanceId,
                   port: messagePortToSend,
@@ -241,15 +372,30 @@ export function useSandpackRSCFrameBootstrap() {
                 };
               }
 
-              console.log('sending port...', type, messagePortToSend);
+              debug &&
+                console.log(`rsc-${type} :: onMessage :: sending port...`);
               void sendIframeRequest(
                 'RSC_CHANNEL_PORT',
-                [messagePortToSend],
+                [transferPort(messagePortToSend, type!)],
                 iframe
-              );
+              )
+                .then(() => true)
+                .catch((err) => {
+                  console.error(
+                    `rsc-${type} :: onMessage :: Failed to send port.`,
+                    err
+                  );
+                  return false;
+                })
+                .then((ok) => {
+                  if (type === 'server' && !isInitial && ok) {
+                    otherMessagePort!.postMessage('RSC_SERVER_UPDATED');
+                  }
+                });
             }
           }
         };
+
         window.addEventListener('message', onMessage, false);
         listenerRef.current = onMessage;
       } else {
@@ -259,16 +405,16 @@ export function useSandpackRSCFrameBootstrap() {
         }
       }
     },
-    [sandboxId, type, sendIframeRequest, messagePort, recreateMessageChannel]
+    [
+      debug,
+      type,
+      sandboxId,
+      messagePort,
+      sendIframeRequest,
+      recreateMessageChannel,
+      otherMessagePort,
+    ]
   );
-
-  useEffect(() => {
-    // the other frame might have changed the port.
-    const state = instanceState.current;
-    if (state && state.port !== messagePort) {
-      void sendIframeRequest('RSC_CHANNEL_PORT', [messagePort], state.iframe);
-    }
-  }, [messagePort, sendIframeRequest]);
 
   return onIframeChange;
 }
