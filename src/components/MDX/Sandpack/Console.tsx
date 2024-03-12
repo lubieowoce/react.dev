@@ -45,7 +45,12 @@ function formatStr(...inputArgs: any[]): any[] {
   }
   // If the first argument is a string, check for substitutions.
   const args = inputArgs.slice(1);
-  let formatted: string = String(maybeMessage);
+  let formatted: string;
+  try {
+    formatted = String(maybeMessage);
+  } catch (error) {
+    formatted = '<cannot convert message to string>';
+  }
   if (args.length) {
     const REGEXP = /(%?)(%([jds]))/g;
 
@@ -74,7 +79,13 @@ function formatStr(...inputArgs: any[]): any[] {
   // Arguments that remain after formatting.
   if (args.length) {
     for (let i = 0; i < args.length; i++) {
-      formatted += ' ' + String(args[i]);
+      let asString;
+      try {
+        asString = String(args[i]);
+      } catch (error) {
+        asString = '<cannot convert to string>';
+      }
+      formatted += ' ' + asString;
     }
   }
 
