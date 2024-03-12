@@ -47,6 +47,7 @@ export default function App() {
 ```js src/ArtistPage.js active
 import { Suspense } from 'react';
 import Albums from './Albums.js';
+// import { ClientTest } from './ClientTest.js'
 import { ClientTest } from './ClientTest.__rsc__.js'
 
 export default function ArtistPage({ artist }) {
