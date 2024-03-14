@@ -47,8 +47,7 @@ export default function App() {
 ```js src/ArtistPage.js active
 import { Suspense } from 'react';
 import Albums from './Albums.js';
-// import { ClientTest } from './ClientTest.js'
-import { ClientTest } from './ClientTest.__rsc__.js'
+import { ClientTest } from './ClientTest.js'
 
 export default function ArtistPage({ artist }) {
   return (
@@ -91,16 +90,11 @@ export default async function Albums({ artistId }) {
 export function ClientTest({ artistId }) {
   return <button onClick={() => alert('Hello, client!')}>Click me</button>
 }
+
+function Beep() { return null }
+export default Beep;
+export { ClientTest as AliasedClientTest }
 ```
-
-```js src/ClientTest.__rsc__.js
-// TODO: autogenerate these
-import * as RSDWServer from 'react-server-dom-webpack/server';
-const proxy = RSDWServer.createClientModuleProxy('file://' + '/src/ClientTest.js');
-
-export const ClientTest = proxy['ClientTest'];
-```
-
 
 ```js src/data.js hidden
 // Note: the way you would do data fetching depends on

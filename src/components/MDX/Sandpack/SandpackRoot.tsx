@@ -115,7 +115,7 @@ function SandpackRoot(props: SandpackProps) {
     autorun,
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
-    bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 3b5c54b
+    bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 69fdda5
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
     logLevel: SandpackLogLevel.None,
     activeFile: sandpackRSCSetup.activeFile,
