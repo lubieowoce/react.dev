@@ -306,7 +306,7 @@ export function useSandpackRSCFrameBootstrap({debug = false} = {}) {
   const {
     sandpack: {files: fastFiles, activeFile},
   } = useSandpack();
-  const files = useDebounced(fastFiles);
+  const files = useDebounced(fastFiles, 2000);
 
   // TODO: do we need to reset this?
   const [fileCache] = React.useState(
