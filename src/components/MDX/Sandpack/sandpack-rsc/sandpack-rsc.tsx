@@ -14,6 +14,7 @@ export type SandpackRSCContextValue = {
   port: MessagePort;
   other: MessagePort;
   onFileChanged?: FileChangeListener;
+  onActiveFileChanged?: (fileName: string) => void;
   recreateMessageChannel: () => ReturnType<typeof createMessageChannel>;
 };
 
@@ -130,13 +131,19 @@ export function findTransferable(root: unknown) {
   return;
 }
 
-export function useSandpackRSCSetup(
-  isRsc: boolean,
-  initialFiles: SandpackFiles
-) {
+export function useSandpackRSCSetup({
+  isRsc,
+  initialFiles,
+  initialActiveFile,
+}: {
+  isRsc: boolean;
+  initialFiles: SandpackFiles;
+  initialActiveFile?: string;
+}) {
   const sandboxIds = useClientServerSandboxIds();
   // TODO: this doesn't handle file updates when editing the docs...
   const [files, setFiles] = React.useState(initialFiles);
+  const [activeFile, setActiveFile] = React.useState(initialActiveFile);
 
   const clientChannel = useMessageChannel();
   const serverChannel = useMessageChannel();
@@ -167,7 +174,7 @@ export function useSandpackRSCSetup(
     });
   }, []);
 
-  const clientContext = useMemo(() => {
+  const clientContext: SandpackRSCContextValue | null = useMemo(() => {
     if (!isRsc) {
       return null;
     }
@@ -177,6 +184,7 @@ export function useSandpackRSCSetup(
       port: clientChannel.channel.there,
       other: serverChannel.channel.here,
       onFileChanged,
+      onActiveFileChanged: setActiveFile,
       recreateMessageChannel: clientChannel.recreate,
     };
   }, [
@@ -188,7 +196,7 @@ export function useSandpackRSCSetup(
     onFileChanged,
   ]);
 
-  const serverContext = useMemo(() => {
+  const serverContext: SandpackRSCContextValue | null = useMemo(() => {
     if (!isRsc) {
       return null;
     }
@@ -237,7 +245,12 @@ export function useSandpackRSCSetup(
     };
   }, [isRsc, sandboxIds.client, sandboxIds.server]);
 
-  return {context, code, files: isRsc ? files : initialFiles};
+  return {
+    context,
+    code,
+    files: isRsc ? files : initialFiles,
+    activeFile: isRsc ? activeFile : initialActiveFile,
+  };
 }
 
 function hideFiles(files: SandpackFiles): SandpackFiles {
@@ -286,11 +299,12 @@ export function useSandpackRSCFrameBootstrap({debug = false} = {}) {
     other: otherMessagePort,
     type,
     onFileChanged,
+    onActiveFileChanged,
     recreateMessageChannel,
   } = React.useContext(SandpackRSCContext) ?? {};
 
   const {
-    sandpack: {files: fastFiles},
+    sandpack: {files: fastFiles, activeFile},
   } = useSandpack();
   const files = useDebounced(fastFiles);
 
@@ -317,6 +331,10 @@ export function useSandpackRSCFrameBootstrap({debug = false} = {}) {
       }
     }
   }, [onFileChanged, files, fileCache]);
+
+  useEffect(() => {
+    onActiveFileChanged?.(activeFile);
+  }, [onActiveFileChanged, activeFile]);
 
   type MessageListener = (event: MessageEvent<unknown>) => void;
   const listenerRef = React.useRef<MessageListener | null>(null);

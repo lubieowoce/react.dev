@@ -85,7 +85,11 @@ function SandpackRoot(props: SandpackProps) {
     hidden: !initialFiles['/src/styles.css']?.visible,
   };
 
-  const sandpackRSCSetup = useSandpackRSCSetup(isRsc, initialFiles);
+  const sandpackRSCSetup = useSandpackRSCSetup({
+    isRsc,
+    initialFiles,
+    initialActiveFile: undefined, // CSB will find it from the `active` prop that files have
+  });
   const clientFiles = React.useMemo(
     () => ({
       ...template,
@@ -114,6 +118,7 @@ function SandpackRoot(props: SandpackProps) {
     bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 3b5c54b
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
     logLevel: SandpackLogLevel.None,
+    activeFile: sandpackRSCSetup.activeFile,
     // logLevel: SandpackLogLevel.Debug,
   };
 
