@@ -115,7 +115,8 @@ function SandpackRoot(props: SandpackProps) {
     autorun,
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
-    bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 69fdda5
+    // bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 43abf3d
+    bundlerURL: 'https://01b21d0e.fruit-flavored-sandpack-bundler.pages.dev', // github.com:lubieowoce/sandpack-bundler.git 43abf3d
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
     logLevel: SandpackLogLevel.None,
     activeFile: sandpackRSCSetup.activeFile,
@@ -145,6 +146,9 @@ function SandpackRoot(props: SandpackProps) {
             }}
             options={{
               ...sharedOptions,
+              // ...(process.env.NODE_ENV === 'development'
+              //   ? {logLevel: SandpackLogLevel.Debug}
+              //   : undefined),
             }}>
             <Preview
               consoleOnly={true}
