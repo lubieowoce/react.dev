@@ -97,6 +97,7 @@
     "unist-util-visit": "^2.0.3",
     "webpack-bundle-analyzer": "^4.5.0"
   },
+  "packageManager": "yarn@1.22.21",
   "engines": {
     "node": "^16.8.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0"
   },
