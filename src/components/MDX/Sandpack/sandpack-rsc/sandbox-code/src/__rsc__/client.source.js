@@ -33,7 +33,11 @@ function promiseWithResolvers() {
 }
 
 export function initClient() {
+  /** @typedef {Promise<any>} JSXPromise */
+  /** @type {(promise: JSXPromise) => void} */
   let setCurrentPromise;
+
+  /** @param {{initialPromise: JSXPromise}} props */
   function Root({initialPromise}) {
     const [promise, _setCurrentPromise] = useState(initialPromise);
     setCurrentPromise = _setCurrentPromise;
@@ -42,18 +46,20 @@ export function initClient() {
 
   const initialPromiseCtrl = promiseWithResolvers();
 
-  /** @type {Promise | undefined} */
+  /** @type {JSXPromise | undefined} */
   let currentPromise;
-  /** @type {Promise | undefined} */
+  /** @type {JSXPromise | undefined} */
   let nextPromise;
 
-  const setElementPromise = (/** @type {Promise<any>} */ promise) => {
+  const setElementPromise = (/** @type {JSXPromise} */ promise) => {
     if (!currentPromise) {
       currentPromise = promise;
       initialPromiseCtrl.resolve(promise);
     } else {
       nextPromise = promise;
-      currentPromise.finally(() => setCurrentPromise(nextPromise));
+      currentPromise.finally(
+        () => nextPromise && setCurrentPromise(nextPromise)
+      );
     }
   };
 

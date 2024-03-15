@@ -19,10 +19,11 @@ export function createPostMessageRequestListener(
 ) {
   return async (/** @type {MessageEvent<unknown>} */ event) => {
     debug && console.debug(name + ' got message', event);
-    const {data} = event;
-    if (!data || typeof data !== 'object') {
+    const {data: rawData} = event;
+    if (!rawData || typeof rawData !== 'object') {
       return;
     }
+    const data = /** @type {{__rsc_request?: unknown}} */ (rawData);
     if (!('__rsc_request' in data)) {
       return;
     }
@@ -41,8 +42,12 @@ export function createPostMessageRequestListener(
           : undefined
       );
     } catch (error) {
+      const message =
+        (error && typeof error === 'object' && 'message' in error
+          ? /** @type {any} */ (error).message
+          : undefined) ?? `${error}`;
       sendReply({
-        __rsc_response: {requestId, error: error.message ?? `${error}`},
+        __rsc_response: {requestId, error: message},
       });
     }
   };
@@ -70,13 +75,12 @@ export function createPostMessageRequestClient(idBase = '') {
       }, 10_000);
 
       const responseHandler = (/** @type {MessageEvent<unknown>} */ event) => {
-        const {data} = event;
-        if (
-          !data ||
-          typeof data !== 'object' ||
-          !('__rsc_response' in data) ||
-          !data.__rsc_response
-        ) {
+        const {data: rawData} = event;
+        if (!rawData || typeof rawData !== 'object') {
+          return;
+        }
+        const data = /** @type {{ __rsc_response?: unknown }} */ (rawData);
+        if (!('__rsc_response' in data) || !data.__rsc_response) {
           return;
         }
 

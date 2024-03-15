@@ -112,7 +112,7 @@ export function findTransferable(root: unknown) {
       }
     } else if (
       Symbol.iterator in val &&
-      typeof val[Symbol.iterator] === 'function'
+      typeof (val as any)[Symbol.iterator] === 'function'
     ) {
       // something iterable
       for (const item of Array.from(val as Iterable<unknown>)) {
@@ -354,10 +354,11 @@ export function useSandpackRSCFrameBootstrap({debug = false} = {}) {
       }
       if (iframe) {
         const onMessage: MessageListener = (event) => {
-          const {data} = event;
-          if (!data || typeof data !== 'object') {
+          const {data: rawData} = event;
+          if (!rawData || typeof rawData !== 'object') {
             return;
           }
+          const data = rawData as {__rsc_init?: unknown};
           if ('__rsc_init' in data) {
             const body = data.__rsc_init as {
               sandboxId: string;
@@ -602,15 +603,15 @@ function createPostMessageRequestClient(
       }, 10_000);
 
       const responseHandler = (event: MessageEvent<unknown>) => {
-        const {data} = event;
-        if (
-          !data ||
-          typeof data !== 'object' ||
-          !('__rsc_response' in data) ||
-          !data.__rsc_response
-        ) {
+        const {data: rawData} = event;
+        if (!rawData || typeof rawData !== 'object') {
           return;
         }
+        const data = rawData as {__rsc_response?: unknown};
+        if (!('__rsc_response' in data) || !data.__rsc_response) {
+          return;
+        }
+
         const response = data.__rsc_response as {requestId: string} & (
           | {data: unknown}
           | {error: string}

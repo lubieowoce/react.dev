@@ -1,23 +1,49 @@
 // @ts-check
-const moduleCache = new Map();
 
-function trackThenableState(promise) {
-  if (typeof promise.status === 'string') {
-    return promise;
+/**
+ * @template T
+ * @typedef {Promise<T> & { status: 'pending' }} PendingThenable<T>
+ */
+
+/**
+ * @template T
+ * @typedef {Promise<T> & { status: 'fulfilled', value: T }} FulfilledThenable<T>
+ */
+
+/**
+ * @template T
+ * @typedef {Promise<T> & { status: 'rejected', reason: unknown }} RejectedThenable<T>
+ */
+
+/**
+ * @template T
+ * @typedef {PendingThenable<T> | FulfilledThenable<T> | RejectedThenable<T>} Thenable<T>
+ */
+
+/** @template T */
+function trackThenableState(/** @type {Promise<T>} */ promise) {
+  const thenable = /** @type {Thenable<T>} */ (promise);
+  if ('status' in thenable && typeof thenable.status === 'string') {
+    return thenable;
   }
-  promise.status = 'pending';
-  promise.then(
+  thenable.status = 'pending';
+  thenable.then(
     (value) => {
-      promise.status = 'fulfilled';
-      promise.value = value;
+      const fulfilledThenable = /** @type {FulfilledThenable<T>} */ (thenable);
+      fulfilledThenable.status = 'fulfilled';
+      fulfilledThenable.value = value;
     },
     (error) => {
-      promise.status = 'rejected';
-      promise.reason = error;
+      const rejectedThenable = /** @type {RejectedThenable<T>} */ (thenable);
+      rejectedThenable.status = 'rejected';
+      rejectedThenable.reason = error;
     }
   );
-  return promise;
+  return thenable;
 }
+
+/** @type {Map<string, Thenable<Record<string, unknown>>>} */
+const moduleCache = new Map();
 
 const getOrImport = (/** @type {string} */ id) => {
   // in sandpack's case, modules and chunks are one and the same.
@@ -26,10 +52,17 @@ const getOrImport = (/** @type {string} */ id) => {
     moduleCache.set(id, promise);
   }
 
-  return moduleCache.get(id);
+  return bang(moduleCache.get(id));
 };
 
+/** @template T */
+function bang(/** @type {T} */ value) {
+  return /** @type {NonNullable<T>} */ (value);
+}
+
+// @ts-expect-error too lazy to type this
 if (typeof globalThis['__webpack_require__'] !== 'function') {
+  // @ts-expect-error too lazy to type this
   globalThis['__webpack_chunk_load__'] = (/** @type {string} */ id) => {
     // console.log('__webpack_chunk_load__', id)
 
@@ -42,7 +75,7 @@ if (typeof globalThis['__webpack_require__'] !== 'function') {
     return getOrImport(id);
   };
 
-  /** @type {Map<string, Promise<Record<string, unknown>>>} */
+  // @ts-expect-error too lazy to type this
   globalThis['__webpack_require__'] = (/** @type {string} */ id) => {
     // console.log('__webpack_require__', id);
 

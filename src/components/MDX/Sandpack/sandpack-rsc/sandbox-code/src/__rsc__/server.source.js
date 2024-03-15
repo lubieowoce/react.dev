@@ -16,7 +16,6 @@ const debug = false;
 
 export function initServer(/** @type {React.FC}*/ AppComponent) {
   const handleRenderRequest = async () => {
-    // @ts-expect-error what is typescript complaining about here? who knows
     const rootElement = <AppComponent />;
 
     const stream = await RSDWServer.renderToReadableStream(
