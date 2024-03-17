@@ -88,6 +88,7 @@ export default async function Albums({ artistId }) {
 ```js src/ClientTest.js
 "use client"
 import { useState } from 'react'
+import { TransitivelyClient } from './TransitivelyClient.js'
 
 export function ClientRefetch({ artistId }) {
   return <button onClick={() => window.__RSC_REFETCH__()}>Refetch data</button>
@@ -96,12 +97,15 @@ export function ClientRefetch({ artistId }) {
 export function StatefulInput() {
   const [value, setValue] = useState('');
   return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      placeholder="Client state test"
-    />
+    <>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Client state test"
+      />
+      <TransitivelyClient />
+    </>
   );
 }
 
@@ -109,6 +113,14 @@ function Beep() { return null }
 export default Beep;
 
 export { ClientRefetch as AliasedClientRefetch }
+```
+
+```js src/TransitivelyClient.js
+import { useState } from 'react'
+export function TransitivelyClient() {
+  useState('whatever');
+  return null;
+}
 ```
 
 ```js src/data.js hidden
