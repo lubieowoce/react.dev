@@ -47,17 +47,20 @@ function bang(/** @type {T} */ value) {
   return /** @type {NonNullable<T>} */ (value);
 }
 
-export function installWebpackGlobals({
-  __webpack_chunk_load__: chunkLoadName = '__webpack_chunk_load__',
-  __webpack_require__: requireName = '__webpack_require__',
-}) {
+export function installWebpackGlobals(
+  /** @type {(specifier: string) => Promise<Record<string, unknown>>} */ importFn,
+  {
+    __webpack_chunk_load__: chunkLoadName = '__webpack_chunk_load__',
+    __webpack_require__: requireName = '__webpack_require__',
+  }
+) {
   /** @type {Map<string, Thenable<Record<string, unknown>>>} */
   const moduleCache = new Map();
 
   const getOrImport = (/** @type {string} */ id) => {
     // in sandpack's case, modules and chunks are one and the same.
     if (!moduleCache.has(id)) {
-      const promise = trackThenableState(import(id));
+      const promise = trackThenableState(importFn(id));
       moduleCache.set(id, promise);
     }
 
