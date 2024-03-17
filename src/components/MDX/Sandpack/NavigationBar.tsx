@@ -300,7 +300,11 @@ const MODULE_SUBGRAPH_CLASSNAMES = {
   unknown: [
     '[--sp-colors-accent:var(--sp-colors-clickable)]', // grey
     ...(ENABLE_CLIENT_SERVER_BADGES
-      ? ["before:content-['?']", ...SERVER_CLIENT_BADGE_BASE]
+      ? [
+          'before:text-transparent',
+          "before:content-['-']",
+          ...SERVER_CLIENT_BADGE_BASE,
+        ]
       : []),
   ],
   shared: [
