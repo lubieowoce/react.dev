@@ -15,6 +15,7 @@ export function useSandpackRSCSetup({isRSC}: {isRSC: boolean}) {
 
   return {
     code,
+    dependencies: rscExtraDeps,
   };
 }
 
@@ -52,8 +53,26 @@ const RSC_SHARED_LIB_FILES = stripReactRefresh(
   ])
 );
 
+// This is missing in Safari, and react-server-dom-webpack/server.browser indirectly uses it
+// by doing `new ReadableStream({ type: "bytes", ... })`
+const needsByteStreamControllerPolyfill =
+  typeof window !== 'undefined' &&
+  typeof (
+    // @ts-expect-error old ts lib types
+    window['ReadableByteStreamController']
+  ) === 'undefined';
+
+const rscExtraDeps = needsByteStreamControllerPolyfill
+  ? {'web-streams-polyfill': '^4.0.0'}
+  : undefined;
+
 const RSC_SERVER_LIB_FILES = stripReactRefresh({
   'src/index.server.js': `
+${
+  needsByteStreamControllerPolyfill
+    ? `import 'web-streams-polyfill/polyfill';`
+    : ''
+}
 import { initServer } from './__rsc__/server.source.js';
 import App from './App.js'
 

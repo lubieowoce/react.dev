@@ -93,8 +93,6 @@ function SandpackRoot(props: SandpackProps) {
     [files, sandpackRSCSetup.code]
   );
 
-  // const serverFiles = React.useDeferredValue(_serverFiles);
-
   const sharedOptions: SandpackProviderProps['options'] = {
     bundlerTimeOut: 30_000,
     autorun,
@@ -124,6 +122,7 @@ function SandpackRoot(props: SandpackProps) {
           // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
           // environment: isRSC ? 'react-server' : 'react',
           environment: isRSC ? ['react', {type: 'server'}] : 'react',
+          dependencies: sandpackRSCSetup.dependencies,
         }}
         options={{...sharedOptions}}>
         <CustomPreset
