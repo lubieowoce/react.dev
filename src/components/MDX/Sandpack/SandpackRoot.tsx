@@ -72,7 +72,7 @@ ul {
 `.trim();
 
 function SandpackRoot(props: SandpackProps) {
-  let {children, autorun = true, rsc: isRsc = false} = props;
+  let {children, autorun = true, rsc: isRSC = false} = props;
   const codeSnippets = Children.toArray(children) as React.ReactElement[];
   const files = createFileMap(codeSnippets);
 
@@ -82,7 +82,7 @@ function SandpackRoot(props: SandpackProps) {
   };
 
   const sandpackRSCSetup = useSandpackRSCSetup({
-    isRsc,
+    isRSC,
   });
   const filesWithSetup = React.useMemo(
     () => ({
@@ -101,13 +101,18 @@ function SandpackRoot(props: SandpackProps) {
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
     // bundlerURL: 'http://localhost:1234/',
-    bundlerURL: 'https://fe3dce42.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/e5d1195066a6db59b0e8710f4a80d441ff0f5320
+    bundlerURL: 'https://d4ac1219.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/ee374baf946eb13f44fc9b2deab6c26c6c9a2f87
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
-    // logLevel: SandpackLogLevel.None,
     logLevel:
-      process.env.NODE_ENV === 'development' && isRsc
+      process.env.NODE_ENV === 'development' && isRSC
         ? SandpackLogLevel.Debug
         : SandpackLogLevel.None,
+    ...(process.env.NODE_ENV === 'development'
+      ? {
+          recompileMode: 'delayed',
+          recompileDelay: 300, // in dev mode, the recompiles can get slow.
+        }
+      : undefined),
   };
 
   return (
@@ -117,10 +122,14 @@ function SandpackRoot(props: SandpackProps) {
         theme={CustomTheme}
         customSetup={{
           // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
-          environment: isRsc ? 'react-server' : 'react',
+          // environment: isRSC ? 'react-server' : 'react',
+          environment: isRSC ? ['react', {type: 'server'}] : 'react',
         }}
         options={{...sharedOptions}}>
-        <CustomPreset providedFiles={Object.keys(filesWithSetup)} />
+        <CustomPreset
+          providedFiles={Object.keys(filesWithSetup)}
+          isRSC={isRSC}
+        />
       </SandpackProvider>
     </div>
   );

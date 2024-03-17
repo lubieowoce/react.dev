@@ -19,8 +19,10 @@ import {useSandpackLint} from './useSandpackLint';
 
 export const CustomPreset = memo(function CustomPreset({
   providedFiles,
+  isRSC = false,
 }: {
   providedFiles: Array<string>;
+  isRSC?: boolean;
 }) {
   const {lintErrors, lintExtensions} = useSandpackLint();
   const {sandpack} = useSandpack();
@@ -38,6 +40,7 @@ export const CustomPreset = memo(function CustomPreset({
       lintErrors={lintErrors}
       lintExtensions={lintExtensions}
       isExpandable={isExpandable}
+      showSubgraphs={isRSC}
     />
   );
 });
@@ -47,11 +50,13 @@ const SandboxShell = memo(function SandboxShell({
   lintErrors,
   lintExtensions,
   isExpandable,
+  showSubgraphs,
 }: {
   providedFiles: Array<string>;
   lintErrors: Array<any>;
   lintExtensions: Array<any>;
   isExpandable: boolean;
+  showSubgraphs?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -63,7 +68,10 @@ const SandboxShell = memo(function SandboxShell({
         style={{
           contain: 'content',
         }}>
-        <NavigationBar providedFiles={providedFiles} />
+        <NavigationBar
+          providedFiles={providedFiles}
+          showSubgraphs={showSubgraphs}
+        />
         <SandpackLayout
           className={cn(
             !(isExpandable || isExpanded) && 'rounded-b-lg overflow-hidden',

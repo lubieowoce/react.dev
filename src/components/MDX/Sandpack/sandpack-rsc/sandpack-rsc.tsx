@@ -1,9 +1,9 @@
 import {SandpackFiles} from '@codesandbox/sandpack-react/unstyled';
 import {useMemo} from 'react';
 
-export function useSandpackRSCSetup({isRsc}: {isRsc: boolean}) {
+export function useSandpackRSCSetup({isRSC}: {isRSC: boolean}) {
   const code = useMemo(() => {
-    if (!isRsc) {
+    if (!isRSC) {
       return undefined;
     }
     return hideFiles({
@@ -11,7 +11,7 @@ export function useSandpackRSCSetup({isRsc}: {isRsc: boolean}) {
       ...RSC_SERVER_LIB_FILES,
       ...RSC_CLIENT_LIB_FILES,
     });
-  }, [isRsc]);
+  }, [isRSC]);
 
   return {
     code,
