@@ -2,15 +2,7 @@
  * Copyright (c) Facebook, Inc. and its affiliates.
  */
 
-import {
-  useRef,
-  useState,
-  useEffect,
-  useMemo,
-  useId,
-  useCallback,
-  useLayoutEffect,
-} from 'react';
+import {useRef, useState, useEffect, useMemo, useId, useCallback} from 'react';
 import {useSandpack, SandpackStack} from '@codesandbox/sandpack-react/unstyled';
 import cn from 'classnames';
 import {ErrorMessage} from './ErrorMessage';
@@ -19,6 +11,7 @@ import type {LintDiagnostic} from './useSandpackLint';
 import {CSSProperties} from 'react';
 import {LoadingOverlay} from './LoadingOverlay';
 import {useDebounced} from './useDebounced';
+import {useRefCallback} from './useRefCallback';
 
 type CustomPreviewProps = {
   className?: string;
@@ -96,12 +89,10 @@ export function Preview({
     [clientId, registerBundler, unregisterBundler]
   );
 
-  const combinedIframeRef = useRefCallback(
-    (iframe: HTMLIFrameElement | null) => {
-      iframeRef.current = iframe;
-      syncBundlerToIframe(iframe);
-    }
-  );
+  const iframeUpdateRef = useRefCallback((iframe: HTMLIFrameElement | null) => {
+    iframeRef.current = iframe;
+    syncBundlerToIframe(iframe);
+  });
 
   const sandpackIdle = sandpack.status === 'idle';
 
@@ -184,7 +175,7 @@ export function Preview({
         )}>
         <div style={iframeWrapperPosition()}>
           <iframe
-            ref={combinedIframeRef}
+            ref={iframeUpdateRef}
             className={cn(
               'rounded-t-none bg-white md:shadow-md sm:rounded-lg w-full max-w-full transition-opacity',
               // We can't *actually* hide content because that would
@@ -226,17 +217,4 @@ export function Preview({
       <SandpackConsole visible={!error} />
     </SandpackStack>
   );
-}
-
-function useRefCallback<TFn extends (...args: any[]) => void>(
-  callback: TFn
-): TFn {
-  const lastComittedCallback = useRef(callback);
-  useLayoutEffect(() => {
-    lastComittedCallback.current = callback;
-  }, [callback]);
-
-  return useCallback((...args: Parameters<TFn>) => {
-    return lastComittedCallback.current(...args);
-  }, []) as TFn;
 }

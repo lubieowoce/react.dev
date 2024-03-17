@@ -12,7 +12,6 @@ interface ErrorType {
 
 export function ErrorMessage({error, ...props}: {error: ErrorType}) {
   const {message, title} = error;
-  console.error('Sandpack error', error);
 
   return (
     <div className="bg-white border-2 border-red-40 rounded-lg p-6" {...props}>
