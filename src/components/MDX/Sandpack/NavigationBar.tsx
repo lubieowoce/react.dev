@@ -62,7 +62,7 @@ export function NavigationBar({
   const isMultiFile = visibleFiles.length > 1;
   const hasJustToggledDropdown = useRef(false);
 
-  const subgraphs = useModuleSubgraphs(
+  const subgraphsByModule = useModuleSubgraphs(
     showSubgraphs ? providedFiles : NO_FILES
   );
 
@@ -82,10 +82,21 @@ export function NavigationBar({
       buttons.forEach((button) => {
         const filePath = button.title;
         if (!filePath) return;
-        const primarySubgraph = subgraphs?.[filePath] ?? 'unknown';
-        // if (!primarySubgraph) return;
+        const subgraphs = subgraphsByModule?.[filePath] ?? 'unknown';
+        let variant: keyof typeof MODULE_SUBGRAPH_CLASSNAMES;
+        if (!subgraphs) {
+          variant = 'unknown';
+        } else if (Array.isArray(subgraphs)) {
+          if (subgraphs.includes('client') && subgraphs.includes('server')) {
+            variant = 'shared';
+          } else {
+            variant = 'unknown';
+          }
+        } else {
+          variant = subgraphs;
+        }
 
-        const classNames = MODULE_SUBGRAPH_CLASSNAMES[primarySubgraph];
+        const classNames = MODULE_SUBGRAPH_CLASSNAMES[variant];
         button.classList.add(...classNames);
         cleanups.push(() => button.classList.remove(...classNames));
       });
@@ -96,7 +107,7 @@ export function NavigationBar({
           } catch (_err) {}
         });
     },
-    [showSubgraphs, subgraphs]
+    [showSubgraphs, subgraphsByModule]
   );
 
   useEffect(() => {
@@ -292,9 +303,15 @@ const MODULE_SUBGRAPH_CLASSNAMES = {
       ? ["before:content-['?']", ...SERVER_CLIENT_BADGE_BASE]
       : []),
   ],
+  shared: [
+    '[--sp-colors-accent:var(--sp-syntax-color-string)]', // violet
+    ...(ENABLE_CLIENT_SERVER_BADGES
+      ? ["before:content-['U']", ...SERVER_CLIENT_BADGE_BASE]
+      : []),
+  ],
 };
 
-type ModuleSubgraphMap = Record<string, 'client' | 'server' | null>;
+type ModuleSubgraphMap = Record<string, SubgraphInfo | null>;
 
 function useModuleSubgraphs(files: string[]) {
   const {listen, sandpack} = useSandpack();
@@ -319,7 +336,8 @@ function useModuleSubgraphs(files: string[]) {
 }
 
 type SandpackBundlerState = NonNullable<SandpackState['bundlerState']>;
-
+type SubgraphId = 'client' | 'server';
+type SubgraphInfo = SubgraphId | SubgraphId[];
 function getModuleSubgraphsFromState(
   state: SandpackBundlerState,
   files: string[]
@@ -341,9 +359,9 @@ function getModuleSubgraphsFromState(
         const {
           fileName,
           // @ts-expect-error added in sandpack fork, not present on type definitions
-          primarySubgraph = null,
+          subgraphs = null,
         } = info;
-        return [fileName, primarySubgraph as 'client' | 'server' | null];
+        return [fileName, subgraphs as SubgraphInfo | null];
       })
   );
 }

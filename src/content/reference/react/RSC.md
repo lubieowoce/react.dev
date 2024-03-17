@@ -48,14 +48,18 @@ export default function App() {
 import { Suspense } from 'react';
 import Albums from './Albums.js';
 import { ClientRefetch, StatefulInput } from './ClientTest.js'
+import { Wrapper } from './Shared';
 
 export default function ArtistPage({ artist }) {
   return (
     <>
       <h1>{artist.name}</h1>
-      <StatefulInput />
-      <input type="text" placeholder="Reconcilliation test" />
-      <ClientRefetch />
+      <Wrapper>
+        <StatefulInput />
+        <input type="text" placeholder="Reconcilliation test" />
+        <br />
+        <ClientRefetch />
+      </Wrapper>
       <Suspense fallback={<Loading />}>
         <Albums artistId={artist.id} />
       </Suspense>
@@ -89,6 +93,7 @@ export default async function Albums({ artistId }) {
 "use client"
 import { useState } from 'react'
 import { TransitivelyClient } from './TransitivelyClient.js'
+import { Wrapper } from './Shared.js'
 
 export function ClientRefetch({ artistId }) {
   return <button onClick={() => window.__RSC_REFETCH__()}>Refetch data</button>
@@ -97,7 +102,7 @@ export function ClientRefetch({ artistId }) {
 export function StatefulInput() {
   const [value, setValue] = useState('');
   return (
-    <>
+    <Wrapper inline>
       <input
         type="text"
         value={value}
@@ -105,7 +110,7 @@ export function StatefulInput() {
         placeholder="Client state test"
       />
       <TransitivelyClient />
-    </>
+    </Wrapper>
   );
 }
 
@@ -120,6 +125,12 @@ import { useState } from 'react'
 export function TransitivelyClient() {
   useState('whatever');
   return null;
+}
+```
+
+```js src/Shared.js
+export function Wrapper({ children, inline = false }) {
+  return <div style={{ display: inline ? 'inline-block' : 'block' }}>{children}</div>
 }
 ```
 
