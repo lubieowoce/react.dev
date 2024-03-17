@@ -31,7 +31,7 @@ Server components are cool!
 }
 ```
 
-```js src/App.js
+```js src/App.js hidden
 import ArtistPage from './ArtistPage.js';
 
 export default function App() {
