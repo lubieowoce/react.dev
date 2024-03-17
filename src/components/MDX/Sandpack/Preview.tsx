@@ -18,7 +18,6 @@ import {SandpackConsole} from './Console';
 import type {LintDiagnostic} from './useSandpackLint';
 import {CSSProperties} from 'react';
 import {LoadingOverlay} from './LoadingOverlay';
-import {useSandpackRSCFrameBootstrap} from './sandpack-rsc';
 import {useDebounced} from './useDebounced';
 
 type CustomPreviewProps = {
@@ -33,8 +32,6 @@ export function Preview({
   isExpanded,
   className,
   lintErrors,
-  consoleOnly = false,
-  title = 'Sandbox Preview',
 }: CustomPreviewProps) {
   const {sandpack, listen} = useSandpack();
   const [bundlerIsReady, setBundlerIsReady] = useState(false);
@@ -87,7 +84,6 @@ export function Preview({
 
   const clientId = useId();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const onIframe = useSandpackRSCFrameBootstrap();
 
   const syncBundlerToIframe = useCallback(
     (iframeElement: HTMLIFrameElement | null) => {
@@ -103,7 +99,6 @@ export function Preview({
   const combinedIframeRef = useRefCallback(
     (iframe: HTMLIFrameElement | null) => {
       iframeRef.current = iframe;
-      onIframe(iframe);
       syncBundlerToIframe(iframe);
     }
   );
@@ -179,7 +174,6 @@ export function Preview({
 
   return (
     <SandpackStack className={className}>
-      {consoleOnly && <div ref={sandpack.lazyAnchorRef}></div>}
       <div
         className={cn(
           'p-0 sm:p-2 md:p-4 lg:p-8 bg-card dark:bg-wash-dark h-full relative md:rounded-b-lg lg:rounded-b-none',
@@ -203,7 +197,7 @@ export function Preview({
                   'absolute opacity-0 pointer-events-none duration-75'
                 : 'opacity-100 duration-150'
             )}
-            title={title}
+            title="Sandbox Preview"
             style={{
               height: iframeComputedHeight || '15px',
               zIndex: isExpanded ? 'initial' : -1,
@@ -229,7 +223,7 @@ export function Preview({
           forceLoading={showLoading}
         />
       </div>
-      <SandpackConsole floating={!consoleOnly} visible={!error} />
+      <SandpackConsole visible={!error} />
     </SandpackStack>
   );
 }

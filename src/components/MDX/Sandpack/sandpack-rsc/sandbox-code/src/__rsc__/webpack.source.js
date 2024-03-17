@@ -42,52 +42,55 @@ function trackThenableState(/** @type {Promise<T>} */ promise) {
   return thenable;
 }
 
-/** @type {Map<string, Thenable<Record<string, unknown>>>} */
-const moduleCache = new Map();
-
-const getOrImport = (/** @type {string} */ id) => {
-  // in sandpack's case, modules and chunks are one and the same.
-  if (!moduleCache.has(id)) {
-    const promise = trackThenableState(import(id));
-    moduleCache.set(id, promise);
-  }
-
-  return bang(moduleCache.get(id));
-};
-
 /** @template T */
 function bang(/** @type {T} */ value) {
   return /** @type {NonNullable<T>} */ (value);
 }
 
-// @ts-expect-error too lazy to type this
-if (typeof globalThis['__webpack_require__'] !== 'function') {
-  // @ts-expect-error too lazy to type this
-  globalThis['__webpack_chunk_load__'] = (/** @type {string} */ id) => {
-    // console.log('__webpack_chunk_load__', id)
+export function installWebpackGlobals({
+  __webpack_chunk_load__: chunkLoadName = '__webpack_chunk_load__',
+  __webpack_require__: requireName = '__webpack_require__',
+}) {
+  /** @type {Map<string, Thenable<Record<string, unknown>>>} */
+  const moduleCache = new Map();
 
-    // in sandpack's case, there is no concept of chunks.
-    // but it's probably best that we have a preload-adjacent thing,
-    // so in the client reference, we set the chunk to the same filename as the module,
-    // and just import() it.
-    // unlike __webpack_chunk_load__, this also evaluates the module,
-    // but we don't really mind here.
-    return getOrImport(id);
-  };
-
-  // @ts-expect-error too lazy to type this
-  globalThis['__webpack_require__'] = (/** @type {string} */ id) => {
-    // console.log('__webpack_require__', id);
-
-    const promise = getOrImport(id);
-    // this is important because we can't easily get $$async set on our references,
-    // and our imports are always async.
-    // luckily, we always preload the modules, so this should be fulfilled at this point.
-    if (promise.status === 'fulfilled') {
-      return promise.value;
+  const getOrImport = (/** @type {string} */ id) => {
+    // in sandpack's case, modules and chunks are one and the same.
+    if (!moduleCache.has(id)) {
+      const promise = trackThenableState(import(id));
+      moduleCache.set(id, promise);
     }
-    return promise;
-  };
-}
 
-export {};
+    return bang(moduleCache.get(id));
+  };
+
+  // @ts-expect-error too lazy to type this
+  if (typeof globalThis[requireName] !== 'function') {
+    // @ts-expect-error too lazy to type this
+    globalThis[chunkLoadName] = (/** @type {string} */ id) => {
+      // console.log('__webpack_chunk_load__', id)
+
+      // in sandpack's case, there is no concept of chunks.
+      // but it's probably best that we have a preload-adjacent thing,
+      // so in the client reference, we set the chunk to the same filename as the module,
+      // and just import() it.
+      // unlike __webpack_chunk_load__, this also evaluates the module,
+      // but we don't really mind here.
+      return getOrImport(id);
+    };
+
+    // @ts-expect-error too lazy to type this
+    globalThis[requireName] = (/** @type {string} */ id) => {
+      // console.log('__webpack_require__', id);
+
+      const promise = getOrImport(id);
+      // this is important because we can't easily get $$async set on our references,
+      // and our imports are always async.
+      // luckily, we always preload the modules, so this should be fulfilled at this point.
+      if (promise.status === 'fulfilled') {
+        return promise.value;
+      }
+      return promise;
+    };
+  }
+}

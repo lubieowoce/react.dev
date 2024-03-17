@@ -44,17 +44,18 @@ export default function App() {
 }
 ```
 
-```js src/ArtistPage.js active
+```js src/ArtistPage.js
 import { Suspense } from 'react';
 import Albums from './Albums.js';
-import { ClientTest } from './ClientTest.js'
+import { ClientRefetch, StatefulInput } from './ClientTest.js'
 
 export default function ArtistPage({ artist }) {
   return (
     <>
       <h1>{artist.name}</h1>
-      <input type="text" placeholder="Client state test" />
-      <ClientTest />
+      <StatefulInput />
+      <input type="text" placeholder="Reconcilliation test" />
+      <ClientRefetch />
       <Suspense fallback={<Loading />}>
         <Albums artistId={artist.id} />
       </Suspense>
@@ -67,7 +68,7 @@ function Loading() {
 }
 ```
 
-```js src/Albums.js
+```js src/Albums.js active
 import { fetchData } from './data.js';
 
 export default async function Albums({ artistId }) {
@@ -86,14 +87,28 @@ export default async function Albums({ artistId }) {
 
 ```js src/ClientTest.js
 "use client"
+import { useState } from 'react'
 
-export function ClientTest({ artistId }) {
-  return <button onClick={() => alert('Hello, client!')}>Click me</button>
+export function ClientRefetch({ artistId }) {
+  return <button onClick={() => window.__RSC_REFETCH__()}>Refetch data</button>
+}
+
+export function StatefulInput() {
+  const [value, setValue] = useState('');
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      placeholder="Client state test"
+    />
+  );
 }
 
 function Beep() { return null }
 export default Beep;
-export { ClientTest as AliasedClientTest }
+
+export { ClientRefetch as AliasedClientRefetch }
 ```
 
 ```js src/data.js hidden

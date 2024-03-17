@@ -1,10 +1,6 @@
 // @ts-check
-import './webpack.source.js';
+import './webpack.client.source.js';
 
-import {
-  initMessaging,
-  createPostMessageRequestClient,
-} from './init-messaging.source.js';
 import * as React from 'react';
 import {
   useState,
@@ -14,23 +10,13 @@ import {
 } from 'react';
 import {createRoot} from 'react-dom/client';
 
+const isDebug = false;
+const debug = isDebug ? console.debug.bind(console) : undefined;
+
 // @ts-expect-error only installed within sandbox
 import * as RSDWClient from 'react-server-dom-webpack/client';
-
-/** @template T */
-function promiseWithResolvers() {
-  /** @type {(value: T) => void} */
-  let resolve = /** @type {any} */ (undefined);
-  /** @type {(error: unknown) => void} */
-  let reject = /** @type {any} */ (undefined);
-
-  /** @type {Promise<T>} */
-  const promise = new Promise((_resolve, _reject) => {
-    resolve = _resolve;
-    reject = _reject;
-  });
-  return {promise, resolve, reject};
-}
+import {promiseWithResolvers} from './promise-with-resolvers.source.js';
+import {serverRequestGlobal, serverUpdateGlobal} from './channel.source.js';
 
 export function initClient() {
   /** @typedef {Promise<any>} JSXPromise */
@@ -71,58 +57,35 @@ export function initClient() {
   });
   const cleanupDom = () => root.unmount();
 
-  const debug = false;
-
-  const cleanupMessaging = initMessaging((port) => {
-    debug && console.debug('rsc-client :: got port');
-    const sendRequest = createPostMessageRequestClient();
-
-    const serverUpdateListener = (
-      /** @type {MessageEvent<unknown>} */ event
-    ) => {
-      if (event.data === 'RSC_SERVER_UPDATED') {
-        debug &&
-          console.debug('rsc-client :: server updated, fetchServerData again');
-        fetchAndUpdateServerData();
+  const fetchAndUpdateServerData = async () => {
+    const promise = (async () => {
+      debug?.('rsc-client :: requesting...');
+      const fetchData = await serverRequestGlobal.get();
+      const responseStream = await fetchData();
+      debug?.('rsc-client :: got response', responseStream);
+      if (!(responseStream instanceof ReadableStream)) {
+        throw new Error('Received response is not a ReadableStream');
       }
-    };
-    port.addEventListener('message', serverUpdateListener, false);
-    const cleanupServerUpdateListener = () =>
-      port.removeEventListener('message', serverUpdateListener, false);
+      return RSDWClient.createFromReadableStream(responseStream);
+    })();
 
-    const fetchAndUpdateServerData = async () => {
-      const promise = (async () => {
-        debug && console.debug('rsc-client :: requesting...');
-        const responseStream = await sendRequest(undefined, undefined, {
-          postMessage: (data, transfer = []) => {
-            port.start();
-            port.postMessage(data, transfer);
-          },
-          responseTarget: port,
-        });
-        debug && console.debug('rsc-client :: got response', responseStream);
-        if (!(responseStream instanceof ReadableStream)) {
-          throw new Error('Received response is not a ReadableStream');
-        }
+    setElementPromise(promise);
+    return promise;
+  };
 
-        return RSDWClient.createFromReadableStream(responseStream);
-      })();
+  // @ts-ignore
+  window.__RSC_REFETCH__ = fetchAndUpdateServerData;
 
-      setElementPromise(promise);
-      return promise;
-    };
-
-    debug && console.debug('rsc-client :: initial fetchServerData');
-    fetchAndUpdateServerData();
-
-    return () => {
-      cleanupServerUpdateListener();
-    };
+  debug?.('rsc-client :: initial fetchServerData');
+  fetchAndUpdateServerData();
+  serverUpdateGlobal.get().then(({target}) => {
+    target.addEventListener('server-update', () => {
+      fetchAndUpdateServerData();
+    });
   });
 
   return () => {
     console.log('rsc-client :: cleaning up');
     cleanupDom();
-    cleanupMessaging();
   };
 }

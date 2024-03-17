@@ -13,9 +13,7 @@ import {CustomPreset} from './CustomPreset';
 import {createFileMap} from './createFileMap';
 import {CustomTheme} from './Themes';
 import {template} from './template';
-import {Preview} from './Preview';
-import {LintDiagnostic} from './useSandpackLint';
-import {SandpackRSCContext, useSandpackRSCSetup} from './sandpack-rsc';
+import {useSandpackRSCSetup} from './sandpack-rsc';
 
 type SandpackProps = {
   children: React.ReactNode;
@@ -76,36 +74,23 @@ ul {
 function SandpackRoot(props: SandpackProps) {
   let {children, autorun = true, rsc: isRsc = false} = props;
   const codeSnippets = Children.toArray(children) as React.ReactElement[];
-  const initialFiles = createFileMap(codeSnippets);
+  const files = createFileMap(codeSnippets);
 
-  initialFiles['/src/styles.css'] = {
-    code: [sandboxStyle, initialFiles['/src/styles.css']?.code ?? ''].join(
-      '\n\n'
-    ),
-    hidden: !initialFiles['/src/styles.css']?.visible,
+  files['/src/styles.css'] = {
+    code: [sandboxStyle, files['/src/styles.css']?.code ?? ''].join('\n\n'),
+    hidden: !files['/src/styles.css']?.visible,
   };
 
   const sandpackRSCSetup = useSandpackRSCSetup({
     isRsc,
-    initialFiles,
-    initialActiveFile: undefined, // CSB will find it from the `active` prop that files have
   });
-  const clientFiles = React.useMemo(
+  const filesWithSetup = React.useMemo(
     () => ({
       ...template,
-      ...sandpackRSCSetup.files,
-      ...sandpackRSCSetup.code.client,
+      ...files,
+      ...sandpackRSCSetup.code,
     }),
-    [sandpackRSCSetup.files, sandpackRSCSetup.code]
-  );
-
-  const serverFiles = React.useMemo(
-    () => ({
-      ...template,
-      ...sandpackRSCSetup.files,
-      ...sandpackRSCSetup.code.server,
-    }),
-    [sandpackRSCSetup.files, sandpackRSCSetup.code.server]
+    [files, sandpackRSCSetup.code]
   );
 
   // const serverFiles = React.useDeferredValue(_serverFiles);
@@ -115,55 +100,30 @@ function SandpackRoot(props: SandpackProps) {
     autorun,
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
-    // bundlerURL: 'http://localhost:1234/', // github.com:lubieowoce/sandpack-bundler.git 43abf3d
-    bundlerURL: 'https://01b21d0e.fruit-flavored-sandpack-bundler.pages.dev', // github.com:lubieowoce/sandpack-bundler.git 43abf3d
+    // bundlerURL: 'http://localhost:1234/',
+    bundlerURL: 'https://ff6f853c.fruit-flavored-sandpack-bundler.pages.dev', // github.com:lubieowoce/sandpack-bundler.git 2f0a540
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
-    logLevel: SandpackLogLevel.None,
-    activeFile: sandpackRSCSetup.activeFile,
-    // logLevel: SandpackLogLevel.Debug,
+    // logLevel: SandpackLogLevel.None,
+    logLevel:
+      process.env.NODE_ENV === 'development' && isRsc
+        ? SandpackLogLevel.Debug
+        : SandpackLogLevel.None,
   };
 
   return (
     <div className="sandpack sandpack--playground w-full my-8" dir="ltr">
-      <SandpackRSCContext.Provider value={sandpackRSCSetup.context.client}>
-        <SandpackProvider
-          files={clientFiles}
-          theme={CustomTheme}
-          customSetup={{
-            environment: 'react' as any,
-          }}
-          options={{...sharedOptions}}>
-          <CustomPreset providedFiles={Object.keys(clientFiles)} />
-        </SandpackProvider>
-      </SandpackRSCContext.Provider>
-      {isRsc && (
-        <SandpackRSCContext.Provider value={sandpackRSCSetup.context.server}>
-          <SandpackProvider
-            files={serverFiles}
-            theme={CustomTheme}
-            customSetup={{
-              environment: 'react-server' as any,
-            }}
-            options={{
-              ...sharedOptions,
-              // ...(process.env.NODE_ENV === 'development'
-              //   ? {logLevel: SandpackLogLevel.Debug}
-              //   : undefined),
-            }}>
-            <Preview
-              consoleOnly={true}
-              className="order-last xl:order-2"
-              isExpanded={false}
-              title="Server Sandbox Frame"
-              lintErrors={NO_LINT_ERRORS}
-            />
-          </SandpackProvider>
-        </SandpackRSCContext.Provider>
-      )}
+      <SandpackProvider
+        files={filesWithSetup}
+        theme={CustomTheme}
+        customSetup={{
+          // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
+          environment: isRsc ? 'react-server' : 'react',
+        }}
+        options={{...sharedOptions}}>
+        <CustomPreset providedFiles={Object.keys(filesWithSetup)} />
+      </SandpackProvider>
     </div>
   );
 }
-
-const NO_LINT_ERRORS: LintDiagnostic = [];
 
 export default SandpackRoot;
