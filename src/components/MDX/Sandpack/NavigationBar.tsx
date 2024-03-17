@@ -68,6 +68,27 @@ export function NavigationBar({
 
   const [tabsElement, setTabsElement] = useState<HTMLDivElement | null>(null);
 
+  const getSubgraphClassnamesForFile = useCallback(
+    (filePath: string, active = true) => {
+      const subgraphs = subgraphsByModule?.[filePath] ?? 'unknown';
+      let variant: keyof typeof MODULE_SUBGRAPH_CLASSNAMES;
+      if (!subgraphs) {
+        variant = 'unknown';
+      } else if (Array.isArray(subgraphs)) {
+        if (subgraphs.includes('client') && subgraphs.includes('server')) {
+          variant = 'shared';
+        } else {
+          variant = 'unknown';
+        }
+      } else {
+        variant = subgraphs;
+      }
+
+      return MODULE_SUBGRAPH_CLASSNAMES[variant][active ? 'default' : 'muted'];
+    },
+    [subgraphsByModule]
+  );
+
   const onTabs = useCallback(
     (tabs: HTMLDivElement | null) => {
       // This is a horribly nasty hack to change the styling of tab buttons
@@ -82,21 +103,7 @@ export function NavigationBar({
       buttons.forEach((button) => {
         const filePath = button.title;
         if (!filePath) return;
-        const subgraphs = subgraphsByModule?.[filePath] ?? 'unknown';
-        let variant: keyof typeof MODULE_SUBGRAPH_CLASSNAMES;
-        if (!subgraphs) {
-          variant = 'unknown';
-        } else if (Array.isArray(subgraphs)) {
-          if (subgraphs.includes('client') && subgraphs.includes('server')) {
-            variant = 'shared';
-          } else {
-            variant = 'unknown';
-          }
-        } else {
-          variant = subgraphs;
-        }
-
-        const classNames = MODULE_SUBGRAPH_CLASSNAMES[variant];
+        const classNames = getSubgraphClassnamesForFile(filePath);
         button.classList.add(...classNames);
         cleanups.push(() => button.classList.remove(...classNames));
       });
@@ -107,7 +114,7 @@ export function NavigationBar({
           } catch (_err) {}
         });
     },
-    [showSubgraphs, subgraphsByModule]
+    [getSubgraphClassnamesForFile, showSubgraphs]
   );
 
   useEffect(() => {
@@ -209,7 +216,13 @@ export function NavigationBar({
                     )}>
                     <span
                       className={cn(
-                        'h-full py-2 px-1 mt-px -mb-px flex border-b text-link dark:text-link-dark border-link dark:border-link-dark items-center text-md leading-tight truncate'
+                        'h-full py-2 px-1 mt-px -mb-px flex border-b',
+                        !showSubgraphs &&
+                          'text-link dark:text-link-dark border-link dark:border-link-dark',
+                        ...(showDropdown && showSubgraphs
+                          ? getSubgraphClassnamesForFile(activeFile, true)
+                          : []),
+                        'items-center text-md leading-tight truncate'
                       )}
                       style={{maxWidth: '160px'}}>
                       {getFileName(activeFile)}
@@ -232,10 +245,13 @@ export function NavigationBar({
                 <Listbox.Option key={filePath} value={filePath} as={Fragment}>
                   {({active}) => (
                     <li
-                      className={cn(
+                      className={cn([
                         'text-md mx-2 my-4 cursor-pointer',
-                        active && 'text-link dark:text-link-dark'
-                      )}>
+                        active && 'text-link dark:text-link-dark',
+                        ...(showDropdown && showSubgraphs
+                          ? getSubgraphClassnamesForFile(filePath, active)
+                          : []),
+                      ])}>
                       {getFileName(filePath)}
                     </li>
                   )}
@@ -264,6 +280,8 @@ export function NavigationBar({
 const ENABLE_CLIENT_SERVER_BADGES = true;
 
 const SERVER_CLIENT_BADGE_BASE = [
+  '!text-[var(--sp-rsc-active-color)]',
+  '[--sp-colors-accent:var(--sp-rsc-active-color)]',
   'flex',
   'items-center',
   '!px-[0.5em]',
@@ -271,11 +289,10 @@ const SERVER_CLIENT_BADGE_BASE = [
   'before:opacity-[0.33]',
   'before:inline-block',
   'before:rounded-sm',
-  'before:bg-[var(--sp-colors-accent)]',
+  'before:bg-[var(--sp-rsc-active-color)]',
   'before:font-bold',
-  // 'before:font-mono',
-  // 'before:text-black',
-  'before:text-black',
+  'before:text-white',
+  'before:dark:text-black',
   'before:text-sm',
   'before:leading-tight',
   'before:w-[calc(1ch+0.6em)]',
@@ -284,35 +301,65 @@ const SERVER_CLIENT_BADGE_BASE = [
   'before:text-center',
 ];
 
+const BADGES = ENABLE_CLIENT_SERVER_BADGES
+  ? {
+      server: ["before:content-['S']", ...SERVER_CLIENT_BADGE_BASE],
+      client: ["before:content-['C']", ...SERVER_CLIENT_BADGE_BASE],
+      shared: ["before:content-['U']", ...SERVER_CLIENT_BADGE_BASE],
+      unknown: [
+        'before:text-transparent',
+        "before:content-['-']",
+        ...SERVER_CLIENT_BADGE_BASE,
+      ],
+    }
+  : {
+      server: [],
+      client: [],
+      shared: [],
+      unknown: [],
+    };
+
 const MODULE_SUBGRAPH_CLASSNAMES = {
-  server: [
-    '[--sp-colors-accent:var(--sp-syntax-color-tag)]', // yellow
-    ...(ENABLE_CLIENT_SERVER_BADGES
-      ? ["before:content-['S']", ...SERVER_CLIENT_BADGE_BASE]
-      : []),
-  ],
-  client: [
-    // '!text-[var(--sp-colors-accent)]' // just use the default color, which happens to be blue.
-    ...(ENABLE_CLIENT_SERVER_BADGES
-      ? ["before:content-['C']", ...SERVER_CLIENT_BADGE_BASE]
-      : []),
-  ],
-  unknown: [
-    '[--sp-colors-accent:var(--sp-colors-clickable)]', // grey
-    ...(ENABLE_CLIENT_SERVER_BADGES
-      ? [
-          'before:text-transparent',
-          "before:content-['-']",
-          ...SERVER_CLIENT_BADGE_BASE,
-        ]
-      : []),
-  ],
-  shared: [
-    '[--sp-colors-accent:var(--sp-syntax-color-string)]', // violet
-    ...(ENABLE_CLIENT_SERVER_BADGES
-      ? ["before:content-['U']", ...SERVER_CLIENT_BADGE_BASE]
-      : []),
-  ],
+  server: {
+    default: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-server)]', // yellow
+      ...BADGES.server,
+    ],
+    muted: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-server-muted)]', // yellow
+      ...BADGES.server,
+    ],
+  },
+  client: {
+    default: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-client)]', // blue
+      ...BADGES.client,
+    ],
+    muted: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-client-muted)]', // blue
+      ...BADGES.client,
+    ],
+  },
+  shared: {
+    default: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-universal)]', // violet
+      ...BADGES.shared,
+    ],
+    muted: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-universal-muted)]', // violet
+      ...BADGES.shared,
+    ],
+  },
+  unknown: {
+    default: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-unknown)]', // grey
+      ...BADGES.unknown,
+    ],
+    muted: [
+      '[--sp-rsc-active-color:var(--sp-rsc-color-unknown-muted)]', // grey
+      ...BADGES.unknown,
+    ],
+  },
 };
 
 type ModuleSubgraphMap = Record<string, SubgraphInfo | null>;

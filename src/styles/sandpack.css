@@ -54,6 +54,19 @@ html .sandpack {
   --sp-syntax-color-property: #005cc5;
   --sp-syntax-color-static: #032f62;
   --sp-syntax-color-string: #032f62;
+
+  /* RSC */
+  --sp-rsc-color-server: #d99733;
+  --sp-rsc-color-server-muted: #caae86;
+
+  --sp-rsc-color-client: #149eca;
+  --sp-rsc-color-client-muted: #6dafc4;
+
+  --sp-rsc-color-universal: #8666d8;
+  --sp-rsc-color-universal-muted: #9d90c1;
+
+  --sp-rsc-color-unknown: var(--sp-colors-clickable);
+  --sp-rsc-color-unknown-muted: var(--sp-colors-clickable);
 }
 
 /* Dark theme */
@@ -75,6 +88,19 @@ html.dark .sp-wrapper {
   --sp-syntax-color-property: #77b7d7;
   --sp-syntax-color-static: #c64640;
   --sp-syntax-color-string: #977cdc;
+
+  /* RSC */
+  --sp-rsc-color-server: #dfab5c;
+  --sp-rsc-color-server-muted: #ecd4b1;
+
+  --sp-rsc-color-client: #149eca;
+  --sp-rsc-color-client-muted: #91c1d0;
+
+  --sp-rsc-color-universal: #977cdc;
+  --sp-rsc-color-universal-muted: #b1a6ce;
+
+  --sp-rsc-color-unknown: var(--sp-colors-clickable);
+  --sp-rsc-color-unknown-muted: var(--sp-colors-clickable);
 }
 
 /**
