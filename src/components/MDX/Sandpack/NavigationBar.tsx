@@ -279,8 +279,10 @@ export function NavigationBar({
 
 const ENABLE_CLIENT_SERVER_BADGES = true;
 
+const BADGE_TEXT_COLOR = ['before:text-white', 'before:dark:text-black'];
+
 const SERVER_CLIENT_BADGE_BASE = [
-  '!text-[var(--sp-rsc-active-color)]',
+  'text-[var(--sp-rsc-active-color)]',
   '[--sp-colors-accent:var(--sp-rsc-active-color)]',
   'flex',
   'items-center',
@@ -291,8 +293,6 @@ const SERVER_CLIENT_BADGE_BASE = [
   'before:rounded-sm',
   'before:bg-[var(--sp-rsc-active-color)]',
   'before:font-bold',
-  'before:text-white',
-  'before:dark:text-black',
   'before:text-sm',
   'before:leading-tight',
   'before:w-[calc(1ch+0.6em)]',
@@ -303,12 +303,25 @@ const SERVER_CLIENT_BADGE_BASE = [
 
 const BADGES = ENABLE_CLIENT_SERVER_BADGES
   ? {
-      server: ["before:content-['S']", ...SERVER_CLIENT_BADGE_BASE],
-      client: ["before:content-['C']", ...SERVER_CLIENT_BADGE_BASE],
-      shared: ["before:content-['U']", ...SERVER_CLIENT_BADGE_BASE],
+      server: [
+        "before:content-['S']",
+        ...BADGE_TEXT_COLOR,
+        ...SERVER_CLIENT_BADGE_BASE,
+      ],
+      client: [
+        "before:content-['C']",
+        ...BADGE_TEXT_COLOR,
+        ...SERVER_CLIENT_BADGE_BASE,
+      ],
+      shared: [
+        "before:content-['U']",
+        ...BADGE_TEXT_COLOR,
+        ...SERVER_CLIENT_BADGE_BASE,
+      ],
       unknown: [
-        'before:text-transparent',
         "before:content-['-']",
+        '!before:text-transparent',
+        '!before:dark:text-transparent',
         ...SERVER_CLIENT_BADGE_BASE,
       ],
     }
