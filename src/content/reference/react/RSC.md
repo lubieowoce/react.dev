@@ -309,7 +309,7 @@ export default function Blog() {
   return (
     <BlogLayout>
       {Object.keys(posts).sort().map((id) =>
-        <Post id={id} post={posts[id]} />
+        <Post key={id} id={id} post={posts[id]} />
       )}
     </BlogLayout>
   );
