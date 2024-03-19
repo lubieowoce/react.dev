@@ -13,7 +13,7 @@ Server components are cool!
 
 ## Kitchen sink {/*kitchen-sink*/}
 
-<Sandpack rsc autorun={false}>
+<Sandpack rsc>
 
 ```json package.json hidden
 {
@@ -216,7 +216,7 @@ async function getAlbums() {
 
 ## Filesystem example {/*filesystem-example*/}
 
-<Sandpack rsc autorun={false}>
+<Sandpack rsc>
 
 ```json package.json hidden
 {
