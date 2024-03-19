@@ -77,14 +77,12 @@ function createModuleMap() {
       const moduleName = moduleUrl.startsWith(prefix)
         ? moduleUrl.slice(prefix.length)
         : moduleUrl;
-      // console.log('moduleMap', { moduleName, exportName });
       const entry = {
         id: moduleName,
         chunks: [moduleName],
         name: exportName || 'default',
         async: true,
       };
-      console.log('moduleMap', key, entry);
       target[key] = entry;
       return entry;
     },

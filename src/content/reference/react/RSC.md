@@ -371,7 +371,7 @@ export default function BlogLayout({ children }) {
 import * as fs from 'node:fs'
 
 export async function updatePost(id, update) {
-  console.log('server: updating post', id, JSON.stringify(update));
+  console.log('[server] updating post', id, JSON.stringify(update));
   
   const data = JSON.parse(
     fs.readFileSync('/src/posts.json', 'utf-8')
