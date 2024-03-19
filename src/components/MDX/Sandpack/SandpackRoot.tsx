@@ -94,7 +94,8 @@ function SandpackRoot(props: SandpackProps) {
   );
 
   const sharedOptions: SandpackProviderProps['options'] = {
-    bundlerTimeOut: 30_000,
+    // bundlerTimeOut: 30_000,
+    bundlerTimeOut: 2 * 60 * 1000, // temporary workaround to reduce flakiness -- multiple RSC sandboxes on one page are slow
     autorun,
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
