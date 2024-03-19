@@ -13,7 +13,7 @@ import {CustomPreset} from './CustomPreset';
 import {createFileMap} from './createFileMap';
 import {CustomTheme} from './Themes';
 import {template} from './template';
-import {useSandpackRSCSetup} from './sandpack-rsc';
+import {REACT_PRESET_OPTIONS, useSandpackRSCSetup} from './sandpack-rsc';
 
 type SandpackProps = {
   children: React.ReactNode;
@@ -99,7 +99,7 @@ function SandpackRoot(props: SandpackProps) {
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
     // bundlerURL: 'http://localhost:1234/',
-    bundlerURL: 'https://2b4b8ba5.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/2df20b5262544b43dbf83f31c0be795f5e6e87d2
+    bundlerURL: 'https://3d1137a9.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/013351c4aa315b46ac5b559c7519c4cc16b4ea72
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
     logLevel:
       process.env.NODE_ENV === 'development' && isRSC
@@ -121,7 +121,7 @@ function SandpackRoot(props: SandpackProps) {
         customSetup={{
           // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
           // environment: isRSC ? 'react-server' : 'react',
-          environment: isRSC ? ['react', {type: 'server'}] : 'react',
+          environment: isRSC ? ['react', REACT_PRESET_OPTIONS] : 'react',
           dependencies: sandpackRSCSetup.dependencies,
         }}
         options={{...sharedOptions}}>

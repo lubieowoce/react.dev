@@ -17,6 +17,10 @@ const debug = isDebug ? console.debug.bind(console) : undefined;
 import * as RSDWClient from 'react-server-dom-webpack/client';
 import {promiseWithResolvers} from './promise-with-resolvers.source.js';
 import {serverRequestGlobal, serverUpdateGlobal} from './channel.source.js';
+import {
+  createCallServer,
+  installGlobalCallServer,
+} from './call-server.source.js';
 
 export function initClient() {
   /** @typedef {Promise<any>} JSXPromise */
@@ -52,9 +56,21 @@ export function initClient() {
   const root = createRoot(
     /** @type {HTMLElement} */ (document.getElementById('root'))
   );
+
+  const callServer = createCallServer((newRoot) => {
+    const resolvedPromise = Object.assign(Promise.resolve(newRoot), {
+      status: 'fulfilled',
+      value: newRoot,
+    });
+    setCurrentPromise(resolvedPromise);
+  });
+
+  installGlobalCallServer(callServer);
+
   startTransition(() => {
     root.render(<Root initialPromise={initialPromiseCtrl.promise} />);
   });
+
   const cleanupDom = () => root.unmount();
 
   const fetchAndUpdateServerData = async () => {
@@ -66,7 +82,9 @@ export function initClient() {
       if (!(responseStream instanceof ReadableStream)) {
         throw new Error('Received response is not a ReadableStream');
       }
-      return RSDWClient.createFromReadableStream(responseStream);
+      return RSDWClient.createFromReadableStream(responseStream, {
+        callServer: callServer,
+      });
     })();
 
     setElementPromise(promise);

@@ -66,6 +66,31 @@ const rscExtraDeps = needsByteStreamControllerPolyfill
   ? {'web-streams-polyfill': '^4.0.0'}
   : undefined;
 
+const registerServerReferenceSpec = {
+  importSource: '/src/__rsc__/register-server-reference.source.js',
+  name: 'registerServerReference',
+};
+
+const createServerReferenceSpec = {
+  importSource: '/src/__rsc__/create-server-reference.source.js',
+  name: 'createServerReference',
+};
+
+export const REACT_PRESET_OPTIONS = {
+  type: 'server',
+  fs: true,
+  serverActions: {
+    transformOptions: {
+      encryption: null,
+      runtime: {
+        callServer: undefined,
+        createServerReference: createServerReferenceSpec,
+        registerServerReference: registerServerReferenceSpec,
+      },
+    },
+  },
+};
+
 const RSC_SERVER_LIB_FILES = stripReactRefresh({
   'src/index.server.js': `
 ${
@@ -82,6 +107,7 @@ initServer(getApp);
 `,
   ...getSandboxCodeFileContents([
     'src/__rsc__/server.source.js',
+    'src/__rsc__/register-server-reference.source.js',
     'src/__rsc__/webpack.server.source.js',
   ]),
 });
@@ -94,6 +120,8 @@ initClient();
 `,
   ...getSandboxCodeFileContents([
     'src/__rsc__/client.source.js',
+    'src/__rsc__/call-server.source.js',
+    'src/__rsc__/create-server-reference.source.js',
     'src/__rsc__/webpack.client.source.js',
   ]),
 });
