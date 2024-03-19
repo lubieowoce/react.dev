@@ -332,10 +332,10 @@ export default function Post({ id, post }) {
     <article style={{ border: '1px solid lightgrey', padding: '1em' }}>
       <h2 style={{ marginTop: 'unset' }}>{post.title}</h2>
       <div style={{ display: 'flex', gap: '1ch'}}>
-      <form>
-        <button formAction={addContent}>Update post</button>
-      </form>
-      <ResetPost id={id} />
+        <form>
+          <button formAction={addContent}>Update post</button>
+        </form>
+        <ResetPost id={id} />
       </div>
       {post.lastModified
         ? <em>last modified: {formatTimestamp(post.lastModified)}</em>
