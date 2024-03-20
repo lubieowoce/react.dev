@@ -13,7 +13,23 @@
     {
       "title": "Server components",
       "path": "/reference/react/RSC",
-      "routes": []
+      "routes": [
+        {
+          "title": "Mixing server and client code",
+          "path": "/reference/react/rsc-examples/kitchen-sink",
+          "canary": true
+        },
+        {
+          "title": "Using the filesystem",
+          "path": "/reference/react/rsc-examples/filesystem",
+          "canary": true
+        },
+        {
+          "title": "Using server actions",
+          "path": "/reference/react/rsc-examples/server-actions",
+          "canary": true
+        }
+      ]
     },
     {
       "title": "Hooks",
