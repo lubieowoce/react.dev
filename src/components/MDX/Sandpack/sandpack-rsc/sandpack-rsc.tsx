@@ -46,10 +46,10 @@ function getSandboxCodeFileContents(fileNames: string[]) {
 
 const RSC_SHARED_LIB_FILES = stripReactRefresh(
   getSandboxCodeFileContents([
-    'src/__rsc__/webpack.source.js',
-    'src/__rsc__/async-global.source.js',
-    'src/__rsc__/channel.source.js',
-    'src/__rsc__/promise-with-resolvers.source.js',
+    'src/__rsc__/shared/webpack.source.js',
+    'src/__rsc__/shared/async-global.source.js',
+    'src/__rsc__/shared/channel.source.js',
+    'src/__rsc__/shared/promise-with-resolvers.source.js',
   ])
 );
 
@@ -67,12 +67,12 @@ const rscExtraDeps = needsByteStreamControllerPolyfill
   : undefined;
 
 const registerServerReferenceSpec = {
-  importSource: '/src/__rsc__/register-server-reference.source.js',
+  importSource: '/src/__rsc__/server/register-server-reference.source.js',
   name: 'registerServerReference',
 };
 
 const createServerReferenceSpec = {
-  importSource: '/src/__rsc__/create-server-reference.source.js',
+  importSource: '/src/__rsc__/client/create-server-reference.source.js',
   name: 'createServerReference',
 };
 
@@ -92,13 +92,14 @@ export const REACT_PRESET_OPTIONS = {
 };
 
 const RSC_SERVER_LIB_FILES = stripReactRefresh({
+  // `react-server` in sandpack is hardcoded to look for this as the "server" entrypoint
   'src/index.server.js': `
 ${
   needsByteStreamControllerPolyfill
     ? `import 'web-streams-polyfill/polyfill';`
     : ''
 }
-import { initServer } from './__rsc__/server.source.js';
+import { initServer } from './__rsc__/server/server.source.js';
 import App from './App.js'
 
 const getApp = () => App;
@@ -106,23 +107,24 @@ initServer(getApp);
 
 `,
   ...getSandboxCodeFileContents([
-    'src/__rsc__/server.source.js',
-    'src/__rsc__/register-server-reference.source.js',
-    'src/__rsc__/webpack.server.source.js',
+    'src/__rsc__/server/server.source.js',
+    'src/__rsc__/server/register-server-reference.source.js',
+    'src/__rsc__/server/webpack.server.source.js',
   ]),
 });
 
 const RSC_CLIENT_LIB_FILES = stripReactRefresh({
+  // `react-server` in sandpack is hardcoded to look for this as the "client" entrypoint
   'src/index.client.js': `
-import { initClient } from './__rsc__/client.source.js';
+import { initClient } from './__rsc__/client/client.source.js';
 
 initClient();
 `,
   ...getSandboxCodeFileContents([
-    'src/__rsc__/client.source.js',
-    'src/__rsc__/call-server.source.js',
-    'src/__rsc__/create-server-reference.source.js',
-    'src/__rsc__/webpack.client.source.js',
+    'src/__rsc__/client/client.source.js',
+    'src/__rsc__/client/call-server.source.js',
+    'src/__rsc__/client/create-server-reference.source.js',
+    'src/__rsc__/client/webpack.client.source.js',
   ]),
 });
 

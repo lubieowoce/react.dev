@@ -15,8 +15,11 @@ const debug = isDebug ? console.debug.bind(console) : undefined;
 
 // @ts-expect-error only installed within sandbox
 import * as RSDWClient from 'react-server-dom-webpack/client';
-import {promiseWithResolvers} from './promise-with-resolvers.source.js';
-import {serverRequestGlobal, serverUpdateGlobal} from './channel.source.js';
+import {promiseWithResolvers} from '../shared/promise-with-resolvers.source.js';
+import {
+  serverRequestGlobal,
+  serverUpdateGlobal,
+} from '../shared/channel.source.js';
 import {
   createCallServer,
   installGlobalCallServer,

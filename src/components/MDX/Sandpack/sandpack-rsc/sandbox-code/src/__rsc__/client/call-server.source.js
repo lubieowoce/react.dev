@@ -1,7 +1,7 @@
 // @ts-expect-error only installed within sandbox
 import * as RSDWClient from 'react-server-dom-webpack/client';
 import {startTransition} from 'react';
-import {serverActionGlobal} from './channel.source';
+import {serverActionGlobal} from '../shared/channel.source';
 
 const isDebug = false;
 const debug = isDebug ? console.debug.bind(console) : undefined;

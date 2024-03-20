@@ -9,7 +9,7 @@ import {
   serverActionGlobal,
   serverRequestGlobal,
   serverUpdateGlobal,
-} from './channel.source.js';
+} from '../shared/channel.source.js';
 import {resolveActionFromId} from './register-server-reference.source.js';
 
 const isDebug = false;
