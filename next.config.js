@@ -15,6 +15,15 @@ const nextConfig = {
     legacyBrowsers: false,
   },
   env: {},
+  async redirects() {
+    return [
+      {
+        source: '/reference/react/RSC',
+        destination: '/learn/server-components',
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config, {dev, isServer, ...options}) => {
     if (process.env.ANALYZE) {
       const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer');

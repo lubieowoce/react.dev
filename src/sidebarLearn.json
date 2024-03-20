@@ -164,6 +164,28 @@
       ]
     },
     {
+      "title": "Server components",
+      "path": "/learn/server-components",
+      "canary": true,
+      "routes": [
+        {
+          "title": "Mixing server and client code",
+          "path": "/learn/server-components/kitchen-sink",
+          "canary": true
+        },
+        {
+          "title": "Using the filesystem",
+          "path": "/learn/server-components/filesystem",
+          "canary": true
+        },
+        {
+          "title": "Using server actions",
+          "path": "/learn/server-components/server-actions",
+          "canary": true
+        }
+      ]
+    },
+    {
       "title": "Escape Hatches",
       "path": "/learn/escape-hatches",
       "tags": ["advanced"],
@@ -194,7 +216,7 @@
         },
         {
           "title": "Removing Effect Dependencies",
-          "path": "/learn/removing-effect-dependencies"              
+          "path": "/learn/removing-effect-dependencies"
         },
         {
           "title": "Reusing Logic with Custom Hooks",
