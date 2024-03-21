@@ -1,5 +1,6 @@
 import {SandpackFiles} from '@codesandbox/sandpack-react/unstyled';
 import {useMemo} from 'react';
+import REACT_APIS from './react-apis';
 
 export function useSandpackRSCSetup({isRSC}: {isRSC: boolean}) {
   const code = useMemo(() => {
@@ -87,6 +88,13 @@ export const REACT_PRESET_OPTIONS = {
         createServerReference: createServerReferenceSpec,
         registerServerReference: registerServerReferenceSpec,
       },
+    },
+  },
+  apiUsage: {
+    include: '^/src/(?!__rsc__/)',
+    apis: REACT_APIS,
+    syntax: {
+      asyncComponent: {server: 'supported', client: undefined},
     },
   },
 };
