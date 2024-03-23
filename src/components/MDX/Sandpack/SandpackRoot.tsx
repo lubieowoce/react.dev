@@ -100,7 +100,7 @@ function SandpackRoot(props: SandpackProps) {
     initMode: 'user-visible',
     initModeObserverOptions: {rootMargin: '1400px 0px'},
     // bundlerURL: 'http://localhost:1234/',
-    bundlerURL: 'https://b2fc6227.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/22160b93a1086cc4e2b07295849f50ec59ed8e1d
+    bundlerURL: 'https://b74a9ada.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/7f8cfb4ba4000482210f139fb4e6fb1a705ace97
     // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
     logLevel:
       process.env.NODE_ENV === 'development' && isRSC
