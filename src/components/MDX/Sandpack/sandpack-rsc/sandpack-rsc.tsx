@@ -47,7 +47,6 @@ function getSandboxCodeFileContents(fileNames: string[]) {
 
 const RSC_SHARED_LIB_FILES = stripReactRefresh(
   getSandboxCodeFileContents([
-    'src/__rsc__/shared/webpack.source.js',
     'src/__rsc__/shared/async-global.source.js',
     'src/__rsc__/shared/channel.source.js',
     'src/__rsc__/shared/promise-with-resolvers.source.js',
@@ -117,7 +116,6 @@ initServer(getApp);
   ...getSandboxCodeFileContents([
     'src/__rsc__/server/server.source.js',
     'src/__rsc__/server/register-server-reference.source.js',
-    'src/__rsc__/server/webpack.server.source.js',
   ]),
 });
 
@@ -132,7 +130,6 @@ initClient();
     'src/__rsc__/client/client.source.js',
     'src/__rsc__/client/call-server.source.js',
     'src/__rsc__/client/create-server-reference.source.js',
-    'src/__rsc__/client/webpack.client.source.js',
   ]),
 });
 

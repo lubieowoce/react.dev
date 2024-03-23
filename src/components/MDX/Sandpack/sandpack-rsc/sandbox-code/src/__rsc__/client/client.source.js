@@ -1,6 +1,4 @@
 // @ts-check
-import './webpack.client.source.js';
-
 import * as React from 'react';
 import {
   useState,

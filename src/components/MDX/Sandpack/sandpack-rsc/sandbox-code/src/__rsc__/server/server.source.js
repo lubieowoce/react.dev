@@ -1,6 +1,4 @@
 // @ts-check
-
-import './webpack.server.source.js';
 import * as React from 'react';
 
 // @ts-expect-error only installed within sandbox
@@ -79,7 +77,7 @@ function createModuleMap() {
         : moduleUrl;
       const entry = {
         id: moduleName,
-        chunks: [moduleName],
+        chunks: [moduleName, moduleName],
         name: exportName || 'default',
         async: true,
       };
