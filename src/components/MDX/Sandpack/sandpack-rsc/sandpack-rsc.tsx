@@ -45,7 +45,7 @@ function getSandboxCodeFileContents(fileNames: string[]) {
   );
 }
 
-const RSC_SHARED_LIB_FILES = stripReactRefresh(
+const RSC_SHARED_LIB_FILES = ensureNoTransforms(
   getSandboxCodeFileContents([
     'src/__rsc__/shared/async-global.source.js',
     'src/__rsc__/shared/channel.source.js',
@@ -98,7 +98,7 @@ export const REACT_PRESET_OPTIONS = {
   },
 };
 
-const RSC_SERVER_LIB_FILES = stripReactRefresh({
+const RSC_SERVER_LIB_FILES = ensureNoTransforms({
   // `react-server` in sandpack is hardcoded to look for this as the "server" entrypoint
   'src/index.server.js': `
 ${
@@ -119,7 +119,7 @@ initServer(getApp);
   ]),
 });
 
-const RSC_CLIENT_LIB_FILES = stripReactRefresh({
+const RSC_CLIENT_LIB_FILES = ensureNoTransforms({
   // `react-server` in sandpack is hardcoded to look for this as the "client" entrypoint
   'src/index.client.js': `
 import { initClient } from './__rsc__/client/client.source.js';
@@ -139,24 +139,23 @@ initClient();
  * - figure out how to configure 'asset/source' modules to skip all other loaders
  * - make sandpacks bundler support `import.meta`, which is the thing that's throwing
  */
-function stripReactRefresh(
+function ensureNoTransforms(
   files: Record<string, string>
 ): Record<string, string> {
   return Object.fromEntries(
     Object.entries(files).map(([fileName, code]) => [
       fileName,
-      stripReactRefreshPostludeFromCode(code),
+      ensureNoReactRefreshInCode(code),
     ])
   );
 }
 
-function stripReactRefreshPostludeFromCode(code: string) {
-  // FIXME: HACK HACK HACK HACK
-  const postludeStart = code.indexOf(
-    '// Wrapped in an IIFE to avoid polluting the global scope'
-  );
-  if (postludeStart === -1) {
-    return code;
+function ensureNoReactRefreshInCode(code: string) {
+  if (code.includes('$RefreshHelpers$')) {
+    throw new Error(
+      'Code contains react-refresh helpers, which means the file is getting transformed by loaders. This is incorrect, we just want the source as-is:\n' +
+        code.slice(0, 100)
+    );
   }
-  return code.slice(0, postludeStart);
+  return code;
 }

@@ -43,8 +43,20 @@ const nextConfig = {
     // For sandpack-rsc:
     // Allow importing the source code of a module to easily inject it into sandboxes
     config.module.rules.unshift({
+      // NOTE: i tried using the modern solution:
+      //   type: 'asset/source'
+      // but i couldn't find a way to have that bypass other loaders
       test: /\.source\.js$/,
-      type: 'asset/source',
+      enforce: 'pre', // run before all other loaders, to bypass JSX transformation and react-refresh
+      use: [
+        {
+          loader: 'raw-loader',
+          options: {
+            // we load the files using require(), we don't want an extra `.default` wrapper
+            esModule: false,
+          },
+        },
+      ],
     });
 
     const {IgnorePlugin, NormalModuleReplacementPlugin} = require('webpack');
