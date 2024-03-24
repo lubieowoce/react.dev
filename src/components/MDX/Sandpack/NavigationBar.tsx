@@ -12,7 +12,6 @@ import {
 } from 'react';
 import cn from 'classnames';
 import {
-  FileTabs,
   SandpackState,
   useSandpack,
   useSandpackNavigation,
@@ -23,18 +22,6 @@ import {DownloadButton} from './DownloadButton';
 import {IconChevron} from '../../Icon/IconChevron';
 import {Listbox} from '@headlessui/react';
 import {OpenInTypeScriptPlaygroundButton} from './OpenInTypeScriptPlayground';
-
-export function useEvent(fn: any): any {
-  const ref = useRef(null);
-  useInsertionEffect(() => {
-    ref.current = fn;
-  }, [fn]);
-  return useCallback((...args: any) => {
-    const f = ref.current!;
-    // @ts-ignore
-    return f(...args);
-  }, []);
-}
 
 const getFileName = (filePath: string): string => {
   const lastIndexOfSlash = filePath.lastIndexOf('/');
@@ -62,69 +49,18 @@ export function NavigationBar({
   const isMultiFile = visibleFiles.length > 1;
   const hasJustToggledDropdown = useRef(false);
 
-  const subgraphsByModule = useModuleSubgraphs(
+  const _subgraphsByModule = useModuleSubgraphs(
     showSubgraphs ? providedFiles : NO_FILES
   );
-
-  const [tabsElement, setTabsElement] = useState<HTMLDivElement | null>(null);
+  const subgraphsByModule = showSubgraphs ? _subgraphsByModule : undefined;
 
   const getSubgraphClassnamesForFile = useCallback(
     (filePath: string, active = true) => {
       const subgraphs = subgraphsByModule?.[filePath] ?? 'unknown';
-      let variant: keyof typeof MODULE_SUBGRAPH_CLASSNAMES;
-      if (!subgraphs) {
-        variant = 'unknown';
-      } else if (Array.isArray(subgraphs)) {
-        if (subgraphs.includes('client') && subgraphs.includes('server')) {
-          variant = 'shared';
-        } else {
-          variant = 'unknown';
-        }
-      } else {
-        variant = subgraphs;
-      }
-
-      return MODULE_SUBGRAPH_CLASSNAMES[variant][active ? 'default' : 'muted'];
+      return getSubgraphClassnames(subgraphs, active);
     },
     [subgraphsByModule]
   );
-
-  const onTabs = useCallback(
-    (tabs: HTMLDivElement | null) => {
-      // This is a horribly nasty hack to change the styling of tab buttons
-      // depending on if the module is server or client.
-      if (!showSubgraphs) return;
-      if (!tabs) return;
-
-      const buttons = tabs.querySelectorAll('button');
-      if (!buttons.length) return;
-
-      const cleanups: (() => void)[] = [];
-      buttons.forEach((button) => {
-        const filePath = button.title;
-        if (!filePath) return;
-        const classNames = getSubgraphClassnamesForFile(filePath);
-        button.classList.add(...classNames);
-        cleanups.push(() => button.classList.remove(...classNames));
-      });
-      return () =>
-        cleanups.forEach((cleanup) => {
-          try {
-            cleanup();
-          } catch (_err) {}
-        });
-    },
-    [getSubgraphClassnamesForFile, showSubgraphs]
-  );
-
-  useEffect(() => {
-    return onTabs(tabsElement);
-  }, [onTabs, tabsElement]);
-
-  const combinedTabsRef = useCallback((tabs: HTMLDivElement | null) => {
-    tabsRef.current = tabs;
-    setTabsElement(tabs); // this feels gross...
-  }, []);
 
   // Keep track of whether we can show all tabs or just the dropdown.
   const onContainerResize = useEvent((containerWidth: number) => {
@@ -193,7 +129,7 @@ export function NavigationBar({
           <div ref={containerRef}>
             <div className="relative overflow-hidden">
               <div
-                ref={combinedTabsRef}
+                ref={tabsRef}
                 className={cn(
                   // The container for all tabs is always in the DOM, but
                   // not always visible. This lets us measure how much space
@@ -202,7 +138,7 @@ export function NavigationBar({
                   'w-[fit-content]',
                   showDropdown ? 'invisible' : ''
                 )}>
-                <FileTabs />
+                <FileTabs subgraphsByModule={subgraphsByModule} />
               </div>
               <Listbox.Button as={Fragment}>
                 {({open}) => (
@@ -219,9 +155,11 @@ export function NavigationBar({
                         'h-full py-2 px-1 mt-px -mb-px flex border-b',
                         !showSubgraphs &&
                           'text-link dark:text-link-dark border-link dark:border-link-dark',
-                        ...(showDropdown && showSubgraphs
-                          ? getSubgraphClassnamesForFile(activeFile, true)
-                          : []),
+                        showDropdown &&
+                          showSubgraphs && [
+                            getSubgraphClassnamesForFile(activeFile, true),
+                            'border-[var(--sp-rsc-active-color)]',
+                          ],
                         'items-center text-md leading-tight truncate'
                       )}
                       style={{maxWidth: '160px'}}>
@@ -247,10 +185,12 @@ export function NavigationBar({
                     <li
                       className={cn([
                         'text-md mx-2 my-4 cursor-pointer',
-                        active && 'text-link dark:text-link-dark',
-                        ...(showDropdown && showSubgraphs
-                          ? getSubgraphClassnamesForFile(filePath, active)
-                          : []),
+                        !showSubgraphs &&
+                          active &&
+                          'text-link dark:text-link-dark',
+                        showDropdown &&
+                          showSubgraphs &&
+                          getSubgraphClassnamesForFile(filePath, active),
                       ])}>
                       {getFileName(filePath)}
                     </li>
@@ -277,7 +217,83 @@ export function NavigationBar({
   );
 }
 
+/** Mirror <FileTabs> from 'sandpack-react/unstyled' */
+function FileTabs({
+  subgraphsByModule,
+}: {
+  subgraphsByModule: ModuleSubgraphMap | undefined;
+}) {
+  // TODO: this should use something like Tab from headless-ui to be more accessible
+  const {sandpack} = useSandpack();
+  const {activeFile, setActiveFile, visibleFiles} = sandpack;
+  return (
+    <div className="sp-tabs" translate="no">
+      <div className="sp-tabs-scrollable-container">
+        {visibleFiles.map((filePath: string) => (
+          <FileButton
+            key={filePath}
+            file={filePath}
+            isActive={filePath === activeFile}
+            onClick={() => setActiveFile(filePath)}
+            subgraph={
+              subgraphsByModule
+                ? subgraphsByModule[filePath] ?? 'unknown'
+                : undefined
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Mirror the button rendered by <FileTabs> from 'sandpack-react/unstyled' */
+function FileButton({
+  file,
+  isActive = false,
+  subgraph,
+  onClick,
+}: {
+  file: string;
+  isActive?: boolean;
+  subgraph?: SubgraphInfo | 'unknown';
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      type="button"
+      data-active={isActive}
+      className={cn(
+        'sp-tab-button',
+        subgraph && [getSubgraphClassnames(subgraph, true)]
+      )}>
+      {getFileName(file)}
+    </button>
+  );
+}
+
 const ENABLE_CLIENT_SERVER_BADGES = true;
+
+const getSubgraphClassnames = (
+  subgraphs: SubgraphInfo | 'unknown',
+  active = true
+) => {
+  let variant: keyof typeof MODULE_SUBGRAPH_CLASSNAMES;
+  if (!subgraphs) {
+    variant = 'unknown';
+  } else if (Array.isArray(subgraphs)) {
+    if (subgraphs.includes('client') && subgraphs.includes('server')) {
+      variant = 'shared';
+    } else {
+      variant = 'unknown';
+    }
+  } else {
+    variant = subgraphs;
+  }
+
+  return MODULE_SUBGRAPH_CLASSNAMES[variant][active ? 'default' : 'muted'];
+};
 
 const BADGE_TEXT_COLOR = ['before:text-white', 'before:dark:text-black'];
 
@@ -286,8 +302,8 @@ const SERVER_CLIENT_BADGE_BASE = [
   '[--sp-colors-accent:var(--sp-rsc-active-color)]',
   'flex',
   'items-center',
-  '!px-[0.5em]',
-  'gap-[0.5ch]',
+  '!px-2',
+  'before:mr-[0.5ch]',
   'before:opacity-[0.33]',
   'before:inline-block',
   'before:rounded-sm',
@@ -381,22 +397,23 @@ function useModuleSubgraphs(files: string[]) {
   const {listen, sandpack} = useSandpack();
   const {clients} = sandpack;
   const clientId = Object.keys(clients)[0];
+  const hasFiles = files.length > 0;
 
   const [subgraphs, setSubgraphs] = useState(() =>
-    sandpack.bundlerState
+    sandpack.bundlerState && hasFiles
       ? getModuleSubgraphsFromState(sandpack.bundlerState, files)
       : undefined
   );
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId || !hasFiles) return;
     return listen((message) => {
       if (message.type === 'state') {
         const subgraphs = getModuleSubgraphsFromState(message.state, files);
         setSubgraphs(subgraphs);
       }
     }, clientId);
-  }, [clientId, listen, files]);
-  return subgraphs;
+  }, [clientId, listen, files, hasFiles]);
+  return hasFiles ? subgraphs : undefined;
 }
 
 type SandpackBundlerState = NonNullable<SandpackState['bundlerState']>;
@@ -428,4 +445,17 @@ function getModuleSubgraphsFromState(
         return [fileName, subgraphs as SubgraphInfo | null];
       })
   );
+}
+
+/** A janky useEffectEvent reimplementation */
+function useEvent(fn: any): any {
+  const ref = useRef(null);
+  useInsertionEffect(() => {
+    ref.current = fn;
+  }, [fn]);
+  return useCallback((...args: any) => {
+    const f = ref.current!;
+    // @ts-ignore
+    return f(...args);
+  }, []);
 }
