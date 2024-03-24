@@ -6,9 +6,9 @@ import {createAsyncGlobal} from './async-global.source';
 /** @type {ServerRequestGlobal} */
 export const serverRequestGlobal =
   // @ts-expect-error
-  window.__serverRequestGlobal ||
+  window['sandpack-rsc.serverRequestGlobal'] ||
   // @ts-expect-error
-  (window.__serverRequestGlobal = createAsyncGlobal());
+  (window['sandpack-rsc.serverRequestGlobal'] = createAsyncGlobal());
 
 /** @typedef {import("./async-global.source").CreateAsyncGlobal<(actionId: string, data: string | FormData | URLSearchParams) => Promise<ReadableStream>>} ServerActionGlobal */
 
@@ -16,9 +16,9 @@ export const serverRequestGlobal =
 /** @type {ServerActionGlobal} */
 export const serverActionGlobal =
   // @ts-expect-error
-  window.__serverActionGlobal ||
+  window['sandpack-rsc.serverActionGlobal'] ||
   // @ts-expect-error
-  (window.__serverActionGlobal = createAsyncGlobal());
+  (window['sandpack-rsc.serverActionGlobal'] = createAsyncGlobal());
 
 /** @typedef {import("./async-global.source").CreateAsyncGlobal<{ target: EventTarget }>} ServerUpdateGlobal */
 
@@ -26,6 +26,6 @@ export const serverActionGlobal =
 /** @type {ServerUpdateGlobal} */
 export const serverUpdateGlobal =
   // @ts-expect-error
-  window.__serverUpdateGlobal ||
+  window['sandpack-rsc.serverUpdateGlobal'] ||
   // @ts-expect-error
-  (window.__serverUpdateGlobal = createAsyncGlobal());
+  (window['sandpack-rsc.serverUpdateGlobal'] = createAsyncGlobal());
