@@ -23,6 +23,18 @@ import {IconChevron} from '../../Icon/IconChevron';
 import {Listbox} from '@headlessui/react';
 import {OpenInTypeScriptPlaygroundButton} from './OpenInTypeScriptPlayground';
 
+function useEvent(fn: any): any {
+  const ref = useRef(null);
+  useInsertionEffect(() => {
+    ref.current = fn;
+  }, [fn]);
+  return useCallback((...args: any) => {
+    const f = ref.current!;
+    // @ts-ignore
+    return f(...args);
+  }, []);
+}
+
 const getFileName = (filePath: string): string => {
   const lastIndexOfSlash = filePath.lastIndexOf('/');
   return filePath.slice(lastIndexOfSlash + 1);
@@ -444,17 +456,4 @@ function getModuleSubgraphsFromState(
         return [fileName, subgraphs as SubgraphInfo | null];
       })
   );
-}
-
-/** A janky useEffectEvent reimplementation */
-function useEvent(fn: any): any {
-  const ref = useRef(null);
-  useInsertionEffect(() => {
-    ref.current = fn;
-  }, [fn]);
-  return useCallback((...args: any) => {
-    const f = ref.current!;
-    // @ts-ignore
-    return f(...args);
-  }, []);
 }
