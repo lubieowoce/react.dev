@@ -188,8 +188,7 @@ export function NavigationBar({
                         !showSubgraphs &&
                           active &&
                           'text-link dark:text-link-dark',
-                        showDropdown &&
-                          showSubgraphs &&
+                        showSubgraphs &&
                           getSubgraphClassnamesForFile(filePath, active),
                       ])}>
                       {getFileName(filePath)}
