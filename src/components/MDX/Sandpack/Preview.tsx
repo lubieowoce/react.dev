@@ -184,8 +184,7 @@ export function Preview({
               // if you make a compiler error and then fix it with code
               // that expands the content. You want to measure that.
               hideContent
-                ? // 'opacity-10 pointer-events-none duration-75'
-                  'absolute opacity-0 pointer-events-none duration-75'
+                ? 'absolute opacity-0 pointer-events-none duration-75'
                 : 'opacity-100 duration-150'
             )}
             title="Sandbox Preview"

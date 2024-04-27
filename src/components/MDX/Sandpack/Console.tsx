@@ -170,7 +170,7 @@ export const SandpackConsole = ({visible}: {visible: boolean}) => {
   }
 
   return (
-    <div className="dark:border-gray-700 bg-white dark:bg-gray-95 border-t w-full dark:text-white">
+    <div className="absolute dark:border-gray-700 bg-white dark:bg-gray-95 border-t bottom-0 w-full dark:text-white">
       <div className="flex justify-between">
         <button
           className="flex items-center p-1"
