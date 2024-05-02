@@ -1,18 +1,12 @@
 import {SandpackFiles} from '@codesandbox/sandpack-react/unstyled';
-import {useMemo} from 'react';
 import REACT_APIS from './react-apis';
 
-export function useSandpackRSCSetup({isRSC}: {isRSC: boolean}) {
-  const code = useMemo(() => {
-    if (!isRSC) {
-      return undefined;
-    }
-    return hideFiles({
-      ...RSC_SHARED_LIB_FILES,
-      ...RSC_SERVER_LIB_FILES,
-      ...RSC_CLIENT_LIB_FILES,
-    });
-  }, [isRSC]);
+export function getSandpackRSCSetup() {
+  const code = hideFiles({
+    ...RSC_SHARED_LIB_FILES,
+    ...RSC_SERVER_LIB_FILES,
+    ...RSC_CLIENT_LIB_FILES,
+  });
 
   return {
     code,

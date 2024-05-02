@@ -13,7 +13,7 @@ import {CustomPreset} from './CustomPreset';
 import {createFileMap} from './createFileMap';
 import {CustomTheme} from './Themes';
 import {template} from './template';
-import {REACT_PRESET_OPTIONS, useSandpackRSCSetup} from './sandpack-rsc';
+import {REACT_PRESET_OPTIONS, getSandpackRSCSetup} from './sandpack-rsc';
 
 type SandpackProps = {
   children: React.ReactNode;
@@ -71,47 +71,47 @@ ul {
 }
 `.trim();
 
+const sandpackOptionsBase: SandpackProviderProps['options'] = {
+  bundlerTimeOut: 30_000,
+  initMode: 'user-visible',
+  initModeObserverOptions: {rootMargin: '1400px 0px'},
+  bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
+  ...(process.env.NODE_ENV === 'development'
+    ? {
+        recompileMode: 'delayed',
+        recompileDelay: 300, // in dev mode, the recompiles can get slow.
+      }
+    : undefined),
+  logLevel: SandpackLogLevel.None,
+};
+
+const sandpackOptionsRsc: SandpackProviderProps['options'] = {
+  ...sandpackOptionsBase,
+  bundlerTimeOut: 2 * 60 * 1000, // temporary workaround to reduce flakiness -- multiple RSC sandboxes on one page are slow
+  // bundlerURL: 'http://localhost:1234/',
+  bundlerURL: 'https://944ff2a2.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/894944b364f90178318259c92be67ab54470c9f4
+  logLevel:
+    process.env.NODE_ENV === 'development'
+      ? SandpackLogLevel.Debug
+      : SandpackLogLevel.None,
+};
+
 function SandpackRoot(props: SandpackProps) {
   let {children, autorun = true, rsc: isRSC = false} = props;
-  const codeSnippets = Children.toArray(children) as React.ReactElement[];
-  const files = createFileMap(codeSnippets);
+  if (isRSC) {
+    return <SandpackRSCRoot {...props} />;
+  }
 
-  files['/src/styles.css'] = {
-    code: [sandboxStyle, files['/src/styles.css']?.code ?? ''].join('\n\n'),
-    hidden: !files['/src/styles.css']?.visible,
+  const files = createFilesFromChildren(children);
+
+  const options = {
+    ...sandpackOptionsBase,
+    autorun,
   };
 
-  const sandpackRSCSetup = useSandpackRSCSetup({
-    isRSC,
-  });
-  const filesWithSetup = React.useMemo(
-    () => ({
-      ...template,
-      ...files,
-      ...sandpackRSCSetup.code,
-    }),
-    [files, sandpackRSCSetup.code]
-  );
-
-  const sharedOptions: SandpackProviderProps['options'] = {
-    // bundlerTimeOut: 30_000,
-    bundlerTimeOut: 2 * 60 * 1000, // temporary workaround to reduce flakiness -- multiple RSC sandboxes on one page are slow
-    autorun,
-    initMode: 'user-visible',
-    initModeObserverOptions: {rootMargin: '1400px 0px'},
-    // bundlerURL: 'http://localhost:1234/',
-    bundlerURL: 'https://944ff2a2.fruit-flavored-sandpack-bundler.pages.dev', // https://github.com/lubieowoce/sandpack-bundler/commit/894944b364f90178318259c92be67ab54470c9f4
-    // bundlerURL: 'https://786946de.sandpack-bundler-4bw.pages.dev',
-    logLevel:
-      process.env.NODE_ENV === 'development' && isRSC
-        ? SandpackLogLevel.Debug
-        : SandpackLogLevel.None,
-    ...(process.env.NODE_ENV === 'development'
-      ? {
-          recompileMode: 'delayed',
-          recompileDelay: 300, // in dev mode, the recompiles can get slow.
-        }
-      : undefined),
+  const filesWithSetup = {
+    ...template,
+    ...files,
   };
 
   return (
@@ -121,18 +121,57 @@ function SandpackRoot(props: SandpackProps) {
         theme={CustomTheme}
         customSetup={{
           // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
-          // environment: isRSC ? 'react-server' : 'react',
-          environment: isRSC ? ['react', REACT_PRESET_OPTIONS] : 'react',
-          dependencies: sandpackRSCSetup.dependencies,
+          environment: 'react',
         }}
-        options={{...sharedOptions}}>
-        <CustomPreset
-          providedFiles={Object.keys(filesWithSetup)}
-          isRSC={isRSC}
-        />
+        options={options}>
+        <CustomPreset providedFiles={Object.keys(filesWithSetup)} />
       </SandpackProvider>
     </div>
   );
+}
+
+function SandpackRSCRoot(props: SandpackProps) {
+  let {children, autorun = true} = props;
+  const files = createFilesFromChildren(children);
+
+  const options = {
+    ...sandpackOptionsRsc,
+    autorun,
+  };
+
+  const sandpackRSCSetup = getSandpackRSCSetup();
+  const filesWithSetup = {
+    ...template,
+    ...files,
+    ...sandpackRSCSetup.code,
+  };
+
+  return (
+    <div className="sandpack sandpack--playground w-full my-8" dir="ltr">
+      <SandpackProvider
+        files={filesWithSetup}
+        theme={CustomTheme}
+        customSetup={{
+          // @ts-expect-error not on the official type definitons, but it's just passed through to sandpack-bundler
+          environment: ['react', REACT_PRESET_OPTIONS],
+          dependencies: sandpackRSCSetup.dependencies,
+        }}
+        options={options}>
+        <CustomPreset providedFiles={Object.keys(filesWithSetup)} isRSC />
+      </SandpackProvider>
+    </div>
+  );
+}
+
+function createFilesFromChildren(children: React.ReactNode) {
+  const codeSnippets = Children.toArray(children) as React.ReactElement[];
+  const files = createFileMap(codeSnippets);
+
+  files['/src/styles.css'] = {
+    code: [sandboxStyle, files['/src/styles.css']?.code ?? ''].join('\n\n'),
+    hidden: !files['/src/styles.css']?.visible,
+  };
+  return files;
 }
 
 export default SandpackRoot;
